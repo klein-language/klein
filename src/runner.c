@@ -66,7 +66,7 @@ Result evaluateExpression(Context* context, Expression* expression) {
                             // Builtin function
                             if (strcmp(identifier, "builtin") == 0) {
                                 char* builtinName = ((Expression*) unary.operation.data.functionCall.data[0])->data.string;
-                                Result (*function)(List) = TRY(getBuiltin(builtinName));
+                                Result (*function)(void*, List) = TRY(getBuiltin(builtinName));
                                 return ok(HEAP(((Expression) {.type = EXPRESSION_BUILTIN_FUNCTION, .data = (ExpressionData) {.builtinFunction = function}}), Expression));
                             }
 
@@ -76,7 +76,7 @@ Result evaluateExpression(Context* context, Expression* expression) {
                             }
 
                             if (value->type == EXPRESSION_BUILTIN_FUNCTION) {
-                                return value->data.builtinFunction(unary.operation.data.functionCall);
+                                return value->data.builtinFunction(context, unary.operation.data.functionCall);
                             }
 
                             return ERROR(ERROR_CALL_NON_FUNCTION, "Attempted to call a non-function");

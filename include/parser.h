@@ -119,7 +119,7 @@ typedef union {
 
     bool boolean;
 
-    Result (*builtinFunction)(List);
+    Result (*builtinFunction)(void*, List);
 } ExpressionData;
 
 struct Expression {
