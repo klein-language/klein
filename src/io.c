@@ -21,21 +21,21 @@
  * doesn't exist or is inaccessible, an error is returned.
  */
 Result readFile(char* path) {
-    // Open file
-    FILE* file = NONNULL(fopen(path, "rb"));
+	// Open file
+	FILE* file = NONNULL(fopen(path, "rb"));
 
-    // Get file size
-    fseek(file, 0, SEEK_END);
-    long length = ftell(file);
-    fseek(file, 0, SEEK_SET);
+	// Get file size
+	fseek(file, 0, SEEK_END);
+	long length = ftell(file);
+	fseek(file, 0, SEEK_SET);
 
-    // Allocate space
-    char* buffer = NONNULL(malloc(length + 1));
+	// Allocate space
+	char* buffer = NONNULL(malloc(length + 1));
 
-    // Read & close file
-    fread(buffer, 1, length, file);
-    fclose(file);
-    buffer[length] = '\0';
+	// Read & close file
+	fread(buffer, 1, length, file);
+	fclose(file);
+	buffer[length] = '\0';
 
-    return ok(buffer);
+	return ok(buffer);
 }

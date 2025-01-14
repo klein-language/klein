@@ -32,34 +32,34 @@
  */
 Result runFile(char* filePath) {
 
-    // Read source code
-    char* sourceCode = TRY(readFile(filePath));
-    char* withStdlib = NONNULL(malloc(strlen(sourceCode) + strlen(STDLIB) + 1));
-    strcpy(withStdlib, STDLIB);
-    strcat(withStdlib, sourceCode);
+	// Read source code
+	char* sourceCode = TRY(readFile(filePath));
+	char* withStdlib = NONNULL(malloc(strlen(sourceCode) + strlen(STDLIB) + 1));
+	strcpy(withStdlib, STDLIB);
+	strcat(withStdlib, sourceCode);
 
-    // Tokenize
-    List tokens = FREE(TRY(tokenize(withStdlib)), List);
-    free(sourceCode);
-    Token** tokenStart = (Token**) tokens.data;
+	// Tokenize
+	List tokens = FREE(TRY(tokenize(withStdlib)), List);
+	free(sourceCode);
+	Token** tokenStart = (Token**) tokens.data;
 
-    // Parse
-    Context context = FREE(TRY(newContext()), Context);
-    Program program = FREE(TRY(parse(&context, &tokens)), Program);
-    free(tokenStart);
+	// Parse
+	Context context = FREE(TRY(newContext()), Context);
+	Program program = FREE(TRY(parse(&context, &tokens)), Program);
+	free(tokenStart);
 
-    // Run
-    TRY(run(&context, program));
+	// Run
+	TRY(run(&context, program));
 
-    // Cleanup
-    for (int statementNumber = 0; statementNumber < program.statements.size; statementNumber++) {
-        freeStatement(program.statements.data[statementNumber]);
-    }
-    free(program.statements.data);
-    freeContext(&context);
+	// Cleanup
+	for (int statementNumber = 0; statementNumber < program.statements.size; statementNumber++) {
+		freeStatement(program.statements.data[statementNumber]);
+	}
+	free(program.statements.data);
+	freeContext(&context);
 
-    // Done
-    return ok(NULL);
+	// Done
+	return ok(NULL);
 }
 
 /**
@@ -69,11 +69,11 @@ Result runFile(char* filePath) {
  * an exit code. This handles the main logic of the program.
  */
 Result mainWrapper(int numberOfArguments, char** arguments) {
-    if (numberOfArguments != 2) {
-        return ERROR(ERROR_BAD_COMMAND, "One argument expected.");
-    }
+	if (numberOfArguments != 2) {
+		return ERROR(ERROR_BAD_COMMAND, "One argument expected.");
+	}
 
-    return runFile(arguments[1]);
+	return runFile(arguments[1]);
 }
 
 /**
@@ -81,13 +81,13 @@ Result mainWrapper(int numberOfArguments, char** arguments) {
  * code.
  */
 int main(int numberOfArguments, char** arguments) {
-    Result attempt = mainWrapper(numberOfArguments, arguments);
+	Result attempt = mainWrapper(numberOfArguments, arguments);
 
-    if (!attempt.success) {
-        fprintf(stderr, "%s\n", attempt.data.errorMessage);
-        free(attempt.data.errorMessage);
-        return 1;
-    }
+	if (!attempt.success) {
+		fprintf(stderr, "%s\n", attempt.data.errorMessage);
+		free(attempt.data.errorMessage);
+		return 1;
+	}
 
-    return 0;
+	return 0;
 }

@@ -28,24 +28,24 @@
  * an error is returned.
  */
 Result declareNewVariable(Scope* scope, Declaration declaration) {
-    // Error - null scope
-    if (scope == NULL) {
-        return ERROR(ERROR_INTERNAL, "Attempted to declare a new variable into a null scope");
-    }
+	// Error - null scope
+	if (scope == NULL) {
+		return ERROR(ERROR_INTERNAL, "Attempted to declare a new variable into a null scope");
+	}
 
-    // Error - Variable already exists
-    Result attempt = getVariable(*scope, declaration.name);
-    if (attempt.success) {
-        return ERROR(ERROR_DUPLICATE_VARIABLE, "Attempted to declare a new variable with the name \"", declaration.name, "\", but there's already a variable with that name where the declaration was made.");
-    } else {
-        free(attempt.data.errorMessage);
-    }
+	// Error - Variable already exists
+	Result attempt = getVariable(*scope, declaration.name);
+	if (attempt.success) {
+		return ERROR(ERROR_DUPLICATE_VARIABLE, "Attempted to declare a new variable with the name \"", declaration.name, "\", but there's already a variable with that name where the declaration was made.");
+	} else {
+		free(attempt.data.errorMessage);
+	}
 
-    // Add the variable
-    TRY(appendToList(&scope->variables, HEAP(declaration, Declaration)));
+	// Add the variable
+	TRY(appendToList(&scope->variables, HEAP(declaration, Declaration)));
 
-    // Return ok
-    return ok(NULL);
+	// Return ok
+	return ok(NULL);
 }
 
 /**
@@ -72,38 +72,38 @@ Result declareNewVariable(Scope* scope, Declaration declaration) {
  * an error is returned.
  */
 Result getVariable(Scope scope, char* name) {
-    Scope* current = &scope;
-    while (current != NULL) {
-        for (int variableNumber = 0; variableNumber < current->variables.size; variableNumber++) {
-            Declaration* variable = current->variables.data[variableNumber];
-            if (strcmp(variable->name, name) == 0) {
-                return ok(&variable->value);
-            }
-        }
-        current = current->parent;
-    }
+	Scope* current = &scope;
+	while (current != NULL) {
+		for (int variableNumber = 0; variableNumber < current->variables.size; variableNumber++) {
+			Declaration* variable = current->variables.data[variableNumber];
+			if (strcmp(variable->name, name) == 0) {
+				return ok(&variable->value);
+			}
+		}
+		current = current->parent;
+	}
 
-    return ERROR(ERROR_REFERENCE_NONEXISTENT_VARIABLE, "Attempted to reference a variable called \"", name, "\", but no variable with that name exists where it was referenced.");
+	return ERROR(ERROR_REFERENCE_NONEXISTENT_VARIABLE, "Attempted to reference a variable called \"", name, "\", but no variable with that name exists where it was referenced.");
 }
 
 Result enterNewScope(Context* context) {
-    Scope* scope = NONNULL(malloc(sizeof(Scope)));
-    scope->parent = context->scope;
-    TRY(appendToList(&context->scope->children, scope));
-    scope->children = EMPTY_LIST();
-    scope->variables = EMPTY_LIST();
-    context->scope = scope;
-    return ok(NULL);
+	Scope* scope = NONNULL(malloc(sizeof(Scope)));
+	scope->parent = context->scope;
+	TRY(appendToList(&context->scope->children, scope));
+	scope->children = EMPTY_LIST();
+	scope->variables = EMPTY_LIST();
+	context->scope = scope;
+	return ok(NULL);
 }
 
 Result exitScope(Context* context) {
-    if (context->scope->parent == NULL) {
-        return ERROR(ERROR_INTERNAL, "Attempted to exit the global scope");
-    }
+	if (context->scope->parent == NULL) {
+		return ERROR(ERROR_INTERNAL, "Attempted to exit the global scope");
+	}
 
-    context->scope = context->scope->parent;
+	context->scope = context->scope->parent;
 
-    return ok(NULL);
+	return ok(NULL);
 }
 
 /**
@@ -120,31 +120,31 @@ Result exitScope(Context* context) {
  * If memory fails to allocate, an error is returned.
  */
 Result newContext() {
-    return ok(HEAP(((Context) {.scope = HEAP(((Scope) {.parent = NULL, .children = EMPTY_LIST(), .variables = EMPTY_LIST()}), Scope)}), Context));
+	return ok(HEAP(((Context) {.scope = HEAP(((Scope) {.parent = NULL, .children = EMPTY_LIST(), .variables = EMPTY_LIST()}), Scope)}), Context));
 }
 
 void freeScope(Scope* scope) {
-    for (int variableNumber = 0; variableNumber < scope->variables.size; variableNumber++) {
-        Declaration* declaration = scope->variables.data[variableNumber];
-        freeExpression(&declaration->value);
-        free(declaration->name);
-        free(declaration);
-    }
+	for (int variableNumber = 0; variableNumber < scope->variables.size; variableNumber++) {
+		Declaration* declaration = scope->variables.data[variableNumber];
+		freeExpression(&declaration->value);
+		free(declaration->name);
+		free(declaration);
+	}
 
-    for (int childNumber = 0; childNumber < scope->children.size; childNumber++) {
-        freeScope(scope->children.data[childNumber]);
-    }
+	for (int childNumber = 0; childNumber < scope->children.size; childNumber++) {
+		freeScope(scope->children.data[childNumber]);
+	}
 
-    free(scope->variables.data);
-    free(scope->children.data);
-    free(scope);
+	free(scope->variables.data);
+	free(scope->children.data);
+	free(scope);
 }
 
 void freeContext(Context* context) {
-    // Free scopes
-    Scope* currentScope = context->scope;
-    while (currentScope->parent != NULL) {
-        currentScope = currentScope->parent;
-    }
-    freeScope(currentScope);
+	// Free scopes
+	Scope* currentScope = context->scope;
+	while (currentScope->parent != NULL) {
+		currentScope = currentScope->parent;
+	}
+	freeScope(currentScope);
 }

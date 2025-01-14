@@ -5,26 +5,26 @@
 #include <stdio.h>
 
 typedef enum {
-    ERROR_NULL,
-    ERROR_DUPLICATE_VARIABLE,
-    ERROR_INVALID_ARGUMENTS,
-    ERROR_CALL_NON_FUNCTION,
-    ERROR_REFERENCE_NONEXISTENT_VARIABLE,
-    ERROR_UNEXPECTED_TOKEN,
-    ERROR_UNRECOGNIZED_TOKEN,
-    ERROR_BAD_COMMAND,
-    ERROR_INVALID_OPERAND,
-    ERROR_INTERNAL,
+	ERROR_NULL,
+	ERROR_DUPLICATE_VARIABLE,
+	ERROR_INVALID_ARGUMENTS,
+	ERROR_CALL_NON_FUNCTION,
+	ERROR_REFERENCE_NONEXISTENT_VARIABLE,
+	ERROR_UNEXPECTED_TOKEN,
+	ERROR_UNRECOGNIZED_TOKEN,
+	ERROR_BAD_COMMAND,
+	ERROR_INVALID_OPERAND,
+	ERROR_INTERNAL,
 } Error;
 
 typedef union {
-    void* data;
-    char* errorMessage;
+	void* data;
+	char* errorMessage;
 } ResultData;
 
 typedef struct {
-    bool success;
-    ResultData data;
+	bool success;
+	ResultData data;
 } Result;
 
 /**
@@ -71,31 +71,31 @@ Result error(char* message, ...);
 void* unwrapUnsafe(Result result);
 
 #define TRY(expression)              \
-    ({                               \
-        Result attempt = expression; \
-        if (!attempt.success) {      \
-            return attempt;          \
-        }                            \
-        attempt.data.data;           \
-    })
+	({                               \
+		Result attempt = expression; \
+		if (!attempt.success) {      \
+			return attempt;          \
+		}                            \
+		attempt.data.data;           \
+	})
 
 /**
  * Asserts that the given expression must be non-NULL. If it is `NULL`, an error
  * `Result` is returned from the current function.
  */
 #define NONNULL(expression__)                                               \
-    ({                                                                      \
-        void* memory__ = expression__;                                      \
-        if (memory__ == NULL) {                                             \
-            return ERROR(ERROR_NULL, "Expected null value to be non-null"); \
-        }                                                                   \
-        memory__;                                                           \
-    })
+	({                                                                      \
+		void* memory__ = expression__;                                      \
+		if (memory__ == NULL) {                                             \
+			return ERROR(ERROR_NULL, "Expected null value to be non-null"); \
+		}                                                                   \
+		memory__;                                                           \
+	})
 
 #define ERROR(code, ...) ({                                   \
-    char target[10];                                          \
-    sprintf(target, "%d", code);                              \
-    error("Error (code E", target, "): ", __VA_ARGS__, NULL); \
+	char target[10];                                          \
+	sprintf(target, "%d", code);                              \
+	error("Error (code E", target, "): ", __VA_ARGS__, NULL); \
 })
 
 #endif

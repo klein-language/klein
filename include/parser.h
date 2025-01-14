@@ -8,25 +8,25 @@
 struct Scope;
 
 typedef struct {
-    /** The statements in the block. The elements in this list are of type `Statement`. */
-    List statements;
+	/** The statements in the block. The elements in this list are of type `Statement`. */
+	List statements;
 
-    struct Scope* innerScope;
+	struct Scope* innerScope;
 
 } Block;
 
 typedef enum {
-    EXPRESSION_BOOLEAN,
-    EXPRESSION_BINARY,
-    EXPRESSION_FUNCTION,
-    EXPRESSION_NUMBER,
-    EXPRESSION_STRING,
-    EXPRESSION_BLOCK,
-    EXPRESSION_UNARY,
-    EXPRESSION_IDENTIFIER,
-    EXPRESSION_BUILTIN_FUNCTION,
-    EXPRESSION_TYPE,
-    EXPRESSION_OBJECT,
+	EXPRESSION_BOOLEAN,
+	EXPRESSION_BINARY,
+	EXPRESSION_FUNCTION,
+	EXPRESSION_NUMBER,
+	EXPRESSION_STRING,
+	EXPRESSION_BLOCK,
+	EXPRESSION_UNARY,
+	EXPRESSION_IDENTIFIER,
+	EXPRESSION_BUILTIN_FUNCTION,
+	EXPRESSION_TYPE,
+	EXPRESSION_OBJECT,
 } ExpressionType;
 
 typedef struct Expression Expression;
@@ -36,183 +36,183 @@ typedef struct {
 } Type;
 
 typedef struct {
-    List fields;
+	List fields;
 } TypeDeclaration;
 
 /**
  * A parameter in a function expression.
  */
 typedef struct {
-    /** The name of the parameter. */
-    char* name;
+	/** The name of the parameter. */
+	char* name;
 
-    /** The type of the parameter. */
-    Type type;
+	/** The type of the parameter. */
+	Type type;
 } Parameter;
 
 typedef struct {
-    Expression* thisObject;
-    Result (*function)(void*, List);
+	Expression* thisObject;
+	Result (*function)(void*, List);
 } BuiltinFunction;
 
 typedef struct {
-    /**
-     * The parameters of this function. This `List` contains elements of
-     * type `Parameter`.
-     */
-    List parameters;
+	/**
+	 * The parameters of this function. This `List` contains elements of
+	 * type `Parameter`.
+	 */
+	List parameters;
 
-    /** The return type of this function. */
-    Type returnType;
+	/** The return type of this function. */
+	Type returnType;
 
-    /** The body of this function. */
-    Block body;
+	/** The body of this function. */
+	Block body;
 
-    Expression* thisObject;
+	Expression* thisObject;
 } Function;
 
 typedef union {
-    char* identifier;
-    Function function;
+	char* identifier;
+	Function function;
 } TypeData;
 
 typedef enum {
-    TYPE_LITERAL_FUNCTION,
-    TYPE_LITERAL_IDENTIFIER,
+	TYPE_LITERAL_FUNCTION,
+	TYPE_LITERAL_IDENTIFIER,
 } TypeLiteralType;
 
 typedef struct {
-    TypeData data;
-    TypeLiteralType type;
+	TypeData data;
+	TypeLiteralType type;
 } TypeLiteral;
 
 typedef struct {
-    List fields;
-    List internals;
+	List fields;
+	List internals;
 } Object;
 
 typedef enum {
-    BINARY_OPERATION_PLUS,
-    BINARY_OPERATION_MINUS,
-    BINARY_OPERATION_TIMES,
-    BINARY_OPERATION_DIVIDE,
-    BINARY_OPERATION_POWER,
-    BINARY_OPERATION_AND,
-    BINARY_OPERATION_OR,
-    BINARY_OPERATION_DOT,
-    BINARY_OPERATION_LESS_THAN,
-    BINARY_OPERATION_GREATER_THAN,
-    BINARY_OPERATION_LESS_THAN_OR_EQUAL_TO,
-    BINARY_OPERATION_GREATER_THAN_OR_EQUAL_TO
+	BINARY_OPERATION_PLUS,
+	BINARY_OPERATION_MINUS,
+	BINARY_OPERATION_TIMES,
+	BINARY_OPERATION_DIVIDE,
+	BINARY_OPERATION_POWER,
+	BINARY_OPERATION_AND,
+	BINARY_OPERATION_OR,
+	BINARY_OPERATION_DOT,
+	BINARY_OPERATION_LESS_THAN,
+	BINARY_OPERATION_GREATER_THAN,
+	BINARY_OPERATION_LESS_THAN_OR_EQUAL_TO,
+	BINARY_OPERATION_GREATER_THAN_OR_EQUAL_TO
 } BinaryOperation;
 
 typedef struct {
-    Expression* left;
-    BinaryOperation operation;
-    Expression* right;
+	Expression* left;
+	BinaryOperation operation;
+	Expression* right;
 } BinaryExpression;
 
 typedef enum {
-    UNARY_OPERATION_NOT,
-    UNARY_OPERATION_FUNCTION_CALL,
+	UNARY_OPERATION_NOT,
+	UNARY_OPERATION_FUNCTION_CALL,
 } UnaryOperationType;
 
 typedef union {
-    List functionCall;
+	List functionCall;
 } UnaryOperationData;
 
 typedef struct {
-    UnaryOperationData data;
-    UnaryOperationType type;
+	UnaryOperationData data;
+	UnaryOperationType type;
 } UnaryOperation;
 
 typedef struct {
-    Expression* expression;
-    UnaryOperation operation;
+	Expression* expression;
+	UnaryOperation operation;
 } UnaryExpression;
 
 typedef union {
 
-    /** A literal string expression. */
-    char* string;
+	/** A literal string expression. */
+	char* string;
 
-    /** A literal number expression. */
-    float number;
+	/** A literal number expression. */
+	float number;
 
-    /** A block expression. */
-    Block block;
+	/** A block expression. */
+	Block block;
 
-    /** A literal number expression. */
-    Function function;
+	/** A literal number expression. */
+	Function function;
 
-    UnaryExpression unary;
+	UnaryExpression unary;
 
-    char* identifier;
+	char* identifier;
 
-    /** A binary expression. */
-    BinaryExpression binary;
+	/** A binary expression. */
+	BinaryExpression binary;
 
-    bool boolean;
+	bool boolean;
 
-    BuiltinFunction builtinFunction;
+	BuiltinFunction builtinFunction;
 
-    TypeDeclaration typeDeclaration;
+	TypeDeclaration typeDeclaration;
 
-    Object object;
+	Object object;
 } ExpressionData;
 
 struct Expression {
-    ExpressionType type;
-    ExpressionData data;
+	ExpressionType type;
+	ExpressionData data;
 };
 
 typedef struct {
-    char* name;
-    void* value;
+	char* name;
+	void* value;
 } InternalField;
 
 typedef struct {
-    char* name;
-    Expression value;
+	char* name;
+	Expression value;
 } Field;
 
 Result getObjectInternal(Object object, char* name);
 Result getObjectField(Object object, char* name);
 
 typedef enum {
-    STATEMENT_DECLARATION,
-    STATEMENT_EXPRESSION,
+	STATEMENT_DECLARATION,
+	STATEMENT_EXPRESSION,
 } StatementType;
 
 typedef struct {
-    char* name;
-    Type* type;
-    Expression value;
+	char* name;
+	Type* type;
+	Expression value;
 } Declaration;
 
 typedef union {
-    Declaration declaration;
-    Expression expression;
+	Declaration declaration;
+	Expression expression;
 } StatementData;
 
 typedef struct {
-    StatementData data;
-    StatementType type;
+	StatementData data;
+	StatementType type;
 } Statement;
 
 typedef struct BinaryOperator BinaryOperator;
 struct BinaryOperator {
-    BinaryOperator* precedent;
-    TokenType* tokenTypes;
-    int tokenTypeCount;
+	BinaryOperator* precedent;
+	TokenType* tokenTypes;
+	int tokenTypeCount;
 };
 
 /**
  * A program's abstract syntax tree.
  */
 typedef struct {
-    /** The statements in the program. The elements in this list are of type `Statement`. */
-    List statements;
+	/** The statements in the program. The elements in this list are of type `Statement`. */
+	List statements;
 } Program;
 
 /**

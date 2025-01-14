@@ -21,10 +21,10 @@
  * If the given expression isn't freeable, behavior is undefined.
  */
 #define FREE(expression, type) ({ \
-    type* pointer = expression;   \
-    type value = *pointer;        \
-    free(pointer);                \
-    value;                        \
+	type* pointer = expression;   \
+	type value = *pointer;        \
+	free(pointer);                \
+	value;                        \
 })
 
 /**
@@ -32,10 +32,10 @@
  * returning a pointer to the value.
  */
 #define HEAP(expression_, type_) ({                   \
-    type_ value_ = (expression_);                     \
-    type_* pointer_ = NONNULL(malloc(sizeof(type_))); \
-    *pointer_ = value_;                               \
-    pointer_;                                         \
+	type_ value_ = (expression_);                     \
+	type_* pointer_ = NONNULL(malloc(sizeof(type_))); \
+	*pointer_ = value_;                               \
+	pointer_;                                         \
 })
 
 #define LIBRARY __declspec(dllexport)

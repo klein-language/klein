@@ -16,25 +16,25 @@
  */
 typedef struct {
 
-    /**
-     * The data stored in this list, as an array of void pointers. The array is
-     * not (necessarily) null-terminated; Instead, it's size is tracked by `size`.
-     */
-    void** data;
+	/**
+	 * The data stored in this list, as an array of void pointers. The array is
+	 * not (necessarily) null-terminated; Instead, it's size is tracked by `size`.
+	 */
+	void** data;
 
-    /**
-     * The number of elements currently stored in the list. This is equivalent to the
-     * length of `data`.
-     */
-    int size;
+	/**
+	 * The number of elements currently stored in the list. This is equivalent to the
+	 * length of `data`.
+	 */
+	int size;
 
-    /**
-     * The number of elements that memory has been allocated for in the list. This does
-     * *not* necessarily reflect the number of elements stored in the list, but rather
-     * the maximum number of elements that *could* currently be stored before allocating
-     * more space. For the former, use `size`.
-     */
-    int capacity;
+	/**
+	 * The number of elements that memory has been allocated for in the list. This does
+	 * *not* necessarily reflect the number of elements stored in the list, but rather
+	 * the maximum number of elements that *could* currently be stored before allocating
+	 * more space. For the former, use `size`.
+	 */
+	int capacity;
 
 } List;
 
@@ -76,9 +76,9 @@ Result prependToList(List* list, void* value);
  * function if memory couldn't be allocated for it.
  */
 #define EMPTY_LIST() ({    \
-    List list;             \
-    TRY(emptyList(&list)); \
-    list;                  \
+	List list;             \
+	TRY(emptyList(&list)); \
+	list;                  \
 })
 
 #endif

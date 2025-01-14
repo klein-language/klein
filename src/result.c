@@ -19,7 +19,7 @@
  * undefined.
  */
 void* unwrapUnsafe(Result result) {
-    return result.data.data;
+	return result.data.data;
 }
 
 /**
@@ -35,12 +35,12 @@ void* unwrapUnsafe(Result result) {
  * data pointer.
  */
 Result ok(void* data) {
-    return (Result) {
-        .success = true,
-        .data = (ResultData) {
-            .data = data,
-        },
-    };
+	return (Result) {
+		.success = true,
+		.data = (ResultData) {
+			.data = data,
+		},
+	};
 }
 
 /**
@@ -57,42 +57,42 @@ Result ok(void* data) {
  * The error `Result`.
  */
 Result error(char* message, ...) {
-    // Set up varargs
-    va_list args;
-    va_start(args, message);
+	// Set up varargs
+	va_list args;
+	va_start(args, message);
 
-    // Get total length
-    char* string = message;
-    int totalLength = 0;
-    while (string != NULL) {
-        totalLength += strlen(string);
-        string = va_arg(args, char*);
-    }
+	// Get total length
+	char* string = message;
+	int totalLength = 0;
+	while (string != NULL) {
+		totalLength += strlen(string);
+		string = va_arg(args, char*);
+	}
 
-    // Allocate result
-    char* result = malloc(totalLength + 1);
+	// Allocate result
+	char* result = malloc(totalLength + 1);
 
-    // Restart varargs
-    va_end(args);
-    va_start(args, message);
+	// Restart varargs
+	va_end(args);
+	va_start(args, message);
 
-    // Build string
-    string = message;
-    result[0] = '\0';
-    while (string != NULL) {
-        strncat(result, string, strlen(string));
-        string = va_arg(args, char*);
-    }
-    result[totalLength] = '\0';
+	// Build string
+	string = message;
+	result[0] = '\0';
+	while (string != NULL) {
+		strncat(result, string, strlen(string));
+		string = va_arg(args, char*);
+	}
+	result[totalLength] = '\0';
 
-    // Clean up varargs
-    va_end(args);
+	// Clean up varargs
+	va_end(args);
 
-    // Return
-    return (Result) {
-        .success = false,
-        .data = (ResultData) {
-            .errorMessage = result,
-        },
-    };
+	// Return
+	return (Result) {
+		.success = false,
+		.data = (ResultData) {
+			.errorMessage = result,
+		},
+	};
 }

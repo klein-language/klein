@@ -6,13 +6,13 @@
 
 typedef struct Scope Scope;
 struct Scope {
-    Scope* parent;
-    List children;
-    List variables;
+	Scope* parent;
+	List children;
+	List variables;
 };
 
 typedef struct {
-    Scope* scope;
+	Scope* scope;
 } Context;
 
 /**

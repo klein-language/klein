@@ -3,18 +3,18 @@
 #include <stdlib.h>
 
 Result emptyHeapList() {
-    List* list = NONNULL(malloc(sizeof(List)));
-    list->size = 0;
-    list->capacity = 8;
-    list->data = NONNULL(malloc(sizeof(void*) * list->capacity));
-    return ok(list);
+	List* list = NONNULL(malloc(sizeof(List)));
+	list->size = 0;
+	list->capacity = 8;
+	list->data = NONNULL(malloc(sizeof(void*) * list->capacity));
+	return ok(list);
 }
 
 Result emptyList(List* output) {
-    output->size = 0;
-    output->capacity = 8;
-    output->data = NONNULL(malloc(sizeof(void*) * output->capacity));
-    return ok(NULL);
+	output->size = 0;
+	output->capacity = 8;
+	output->data = NONNULL(malloc(sizeof(void*) * output->capacity));
+	return ok(NULL);
 }
 
 /**
@@ -43,41 +43,41 @@ Result emptyList(List* output) {
  * undefined.
  */
 Result appendToList(List* list, void* value) {
-    if (list == NULL) {
-        return ERROR(ERROR_INTERNAL, "Attempted to append to a null list");
-    }
+	if (list == NULL) {
+		return ERROR(ERROR_INTERNAL, "Attempted to append to a null list");
+	}
 
-    if (list->size == list->capacity) {
-        list->capacity *= 2;
-        list->data = NONNULL(realloc(list->data, sizeof(void*) * list->capacity));
-    }
+	if (list->size == list->capacity) {
+		list->capacity *= 2;
+		list->data = NONNULL(realloc(list->data, sizeof(void*) * list->capacity));
+	}
 
-    list->data[list->size] = value;
-    list->size++;
+	list->data[list->size] = value;
+	list->size++;
 
-    return ok(NULL);
+	return ok(NULL);
 }
 
 Result prependToList(List* list, void* value) {
-    if (list == NULL) {
-        return ERROR(ERROR_INTERNAL, "Attempted to prepend to a null list");
-    }
+	if (list == NULL) {
+		return ERROR(ERROR_INTERNAL, "Attempted to prepend to a null list");
+	}
 
-    if (list->size == list->capacity) {
-        list->capacity *= 2;
-        list->data = NONNULL(realloc(list->data, sizeof(void*) * list->capacity));
-    }
+	if (list->size == list->capacity) {
+		list->capacity *= 2;
+		list->data = NONNULL(realloc(list->data, sizeof(void*) * list->capacity));
+	}
 
-    for (int index = list->size; index > 0; index--) {
-        list->data[index] = list->data[index - 1];
-    }
+	for (int index = list->size; index > 0; index--) {
+		list->data[index] = list->data[index - 1];
+	}
 
-    list->data[0] = value;
-    list->size++;
+	list->data[0] = value;
+	list->size++;
 
-    return ok(NULL);
+	return ok(NULL);
 }
 
 bool isListEmpty(List* list) {
-    return list->size == 0;
+	return list->size == 0;
 }
