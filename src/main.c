@@ -5,8 +5,10 @@
 #include "../include/parser.h"
 #include "../include/result.h"
 #include "../include/runner.h"
+#include "../include/stdlib.h"
 #include "../include/util.h"
 #include <stdio.h>
+#include <string.h>
 
 /**
  * Runs the given Micro file.
@@ -29,8 +31,13 @@
  * - `evaluate()` from `runner.h`
  */
 Result runFile(char* filePath) {
+
     char* sourceCode = TRY(readFile(filePath));
-    List tokens = FREE(TRY(tokenize(sourceCode)), List);
+    char* withStdlib = NONNULL(malloc(strlen(sourceCode) + strlen(MICRO_STDLIB) + 1));
+    strcpy(withStdlib, MICRO_STDLIB);
+    strcat(withStdlib, sourceCode);
+
+    List tokens = FREE(TRY(tokenize(withStdlib)), List);
     free(sourceCode);
     Token** tokenStart = (Token**) tokens.data;
     Context context = FREE(TRY(newContext()), Context);
