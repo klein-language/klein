@@ -1,0 +1,96 @@
+let print: function(object: Anything): Nothing = builtin;
+
+let List = type<T> {
+
+	get = function(this: index: Number): T? = builtin,
+
+	contains = function(this, value: T): Boolean {
+		for element in this {
+			if element == value {
+				return true;
+			}
+		}
+
+		return false;
+	},
+
+	copy = function(this): List<T> {
+		let list = [];
+		for element in this {
+			list.add(element);
+		}
+		return list;
+	},
+
+	filter = function(this, filter: function(element: T): Boolean): List<T> {
+		let removals = [];
+		for index, element in this.enumerate() {
+			if !filter(element) {
+				removals.add(index);
+			}
+		}
+
+		for index in removals {
+			this.remove_at(index);
+		}
+		
+		return this;
+	},
+
+	filtered = function(this, filter: function(element: T): Boolean): List<T> {
+		return this.copy().filter(filter);
+	},
+
+	remove_any = function(this, filter: function(element: T): Boolean): List<T> {
+		let removals = [];
+		for index, element in this.enumerate() {
+			if filter(element) {
+				removals.add(index);
+			}
+		}
+
+		for index in removals {
+			this.remove_at(index);
+		}
+		
+		return this;
+	},
+
+	removed_any = function(this, filter: function(element: T): Boolean): List<T> {
+		return this.copy().remove_any(filter);
+	},
+
+	map = function(this, map: function(element: T): T): List<T> {
+		for index, element in this.enumerate() {
+			this[index] = map(element);
+		}
+
+		return this;
+	},
+
+	mapped = function<U>(this, map: function(element: T): U): List<U> {
+		let list = this.copy();
+		for element in this.enumerate() {
+			list.add(map(element));
+		}
+		return list;
+	},
+
+	sort_by = function(this, sorter: function(first: T, other: T): Boolean) {
+
+	},
+
+	sorted_by = function(this, sorter: function(first: T, other: T): Boolean): List<T> {
+		return this.copy.sort_by(sorter);
+	},
+
+	find = function(this, predicate: function(element: T): Boolean): T? {
+		for element in this {
+			if predicate(element) {
+				return element;
+			}
+		}
+
+		return nothing;
+	}
+};

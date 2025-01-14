@@ -1,0 +1,59 @@
+#ifndef LEXER_H
+#define LEXER_H
+
+#include "list.h"
+#include "result.h"
+
+typedef enum {
+
+    // Keywords
+    TOKEN_TYPE_KEYWORD_AND,
+    TOKEN_TYPE_KEYWORD_ELSE,
+    TOKEN_TYPE_KEYWORD_FALSE,
+    TOKEN_TYPE_KEYWORD_FOR,
+    TOKEN_TYPE_KEYWORD_FUNCTION,
+    TOKEN_TYPE_KEYWORD_IF,
+    TOKEN_TYPE_KEYWORD_IN,
+    TOKEN_TYPE_KEYWORD_LET,
+    TOKEN_TYPE_KEYWORD_NOT,
+    TOKEN_TYPE_KEYWORD_OR,
+    TOKEN_TYPE_KEYWORD_TRUE,
+    TOKEN_TYPE_KEYWORD_TYPE,
+
+    // Grouping
+    TOKEN_TYPE_LEFT_BRACE,
+    TOKEN_TYPE_LEFT_BRACKET,
+    TOKEN_TYPE_LEFT_PARENTHESIS,
+    TOKEN_TYPE_RIGHT_BRACE,
+    TOKEN_TYPE_RIGHT_BRACKET,
+    TOKEN_TYPE_RIGHT_PARENTHESIS,
+
+    // Operators
+    TOKEN_TYPE_COLON,
+    TOKEN_TYPE_COMMA,
+    TOKEN_TYPE_EQUALS,
+    TOKEN_TYPE_MINUS,
+    TOKEN_TYPE_PLUS,
+    TOKEN_TYPE_SEMICOLON,
+
+    // Literals
+    TOKEN_TYPE_STRING,
+    TOKEN_TYPE_NUMBER,
+    TOKEN_TYPE_IDENTIFIER,
+
+    // Ignored
+    TOKEN_TYPE_WHITESPACE,
+    TOKEN_TYPE_COMMENT,
+    TOKEN_TYPE_EOF
+
+} TokenType;
+
+typedef struct {
+    TokenType type;
+    char* value;
+} Token;
+
+Result tokenize(char* sourceCode);
+void freeToken(Token* token);
+
+#endif

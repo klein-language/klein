@@ -1,0 +1,2 @@
+let print = builtin("print");
+print("Hello world");
