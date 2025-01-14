@@ -56,12 +56,20 @@ Result getNextToken(char* sourceCode) {
     switch (*current) {
         case '=':
             return ok(TRY(heapToken(TOKEN_TYPE_EQUALS, "=")));
+        case '.':
+            return ok(TRY(heapToken(TOKEN_TYPE_DOT, ".")));
         case '(':
             return ok(TRY(heapToken(TOKEN_TYPE_LEFT_PARENTHESIS, "(")));
+        case '{':
+            return ok(TRY(heapToken(TOKEN_TYPE_LEFT_BRACE, "{")));
+        case '}':
+            return ok(TRY(heapToken(TOKEN_TYPE_RIGHT_BRACE, "}")));
         case ')':
             return ok(TRY(heapToken(TOKEN_TYPE_RIGHT_PARENTHESIS, ")")));
         case ';':
             return ok(TRY(heapToken(TOKEN_TYPE_SEMICOLON, ";")));
+        case ':':
+            return ok(TRY(heapToken(TOKEN_TYPE_COLON, ":")));
         case ' ':
             return ok(TRY(heapToken(TOKEN_TYPE_WHITESPACE, " ")));
         case '\n':
@@ -99,6 +107,8 @@ Result getNextToken(char* sourceCode) {
             type = TOKEN_TYPE_KEYWORD_FUNCTION;
         } else if (strcmp(identifier, "true") == 0) {
             type = TOKEN_TYPE_KEYWORD_TRUE;
+        } else if (strcmp(identifier, "do") == 0) {
+            type = TOKEN_TYPE_KEYWORD_DO;
         } else if (strcmp(identifier, "false") == 0) {
             type = TOKEN_TYPE_KEYWORD_FALSE;
         } else if (strcmp(identifier, "type") == 0) {
@@ -109,6 +119,8 @@ Result getNextToken(char* sourceCode) {
             type = TOKEN_TYPE_KEYWORD_IN;
         } else if (strcmp(identifier, "if") == 0) {
             type = TOKEN_TYPE_KEYWORD_IF;
+        } else if (strcmp(identifier, "type") == 0) {
+            type = TOKEN_TYPE_KEYWORD_TYPE;
         } else if (strcmp(identifier, "else") == 0) {
             type = TOKEN_TYPE_KEYWORD_ELSE;
         }

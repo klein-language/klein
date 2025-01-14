@@ -69,6 +69,7 @@ bool isListEmpty(List* list);
  * undefined.
  */
 Result appendToList(List* list, void* value);
+Result prependToList(List* list, void* value);
 
 /**
  * Creates a new empty list on the stack, returning an error `Result` from the current

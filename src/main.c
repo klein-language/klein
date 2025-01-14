@@ -11,11 +11,11 @@
 #include <string.h>
 
 /**
- * Runs the given Micro file.
+ * Runs the given Klein file.
  *
  * # Parameters
  *
- * - `filePath` - The path to the micro file as a null-terminated string.
+ * - `filePath` - The path to the klein file as a null-terminated string.
  *
  * # Returns
  *
@@ -32,23 +32,33 @@
  */
 Result runFile(char* filePath) {
 
+    // Read source code
     char* sourceCode = TRY(readFile(filePath));
-    char* withStdlib = NONNULL(malloc(strlen(sourceCode) + strlen(MICRO_STDLIB) + 1));
-    strcpy(withStdlib, MICRO_STDLIB);
+    char* withStdlib = NONNULL(malloc(strlen(sourceCode) + strlen(STDLIB) + 1));
+    strcpy(withStdlib, STDLIB);
     strcat(withStdlib, sourceCode);
 
+    // Tokenize
     List tokens = FREE(TRY(tokenize(withStdlib)), List);
     free(sourceCode);
     Token** tokenStart = (Token**) tokens.data;
+
+    // Parse
     Context context = FREE(TRY(newContext()), Context);
     Program program = FREE(TRY(parse(&context, &tokens)), Program);
     free(tokenStart);
+
+    // Run
     TRY(run(&context, program));
+
+    // Cleanup
     for (int statementNumber = 0; statementNumber < program.statements.size; statementNumber++) {
         freeStatement(program.statements.data[statementNumber]);
     }
     free(program.statements.data);
     freeContext(&context);
+
+    // Done
     return ok(NULL);
 }
 
@@ -74,7 +84,7 @@ int main(int numberOfArguments, char** arguments) {
     Result attempt = mainWrapper(numberOfArguments, arguments);
 
     if (!attempt.success) {
-        fprintf(stderr, "Error: %s\n", attempt.data.errorMessage);
+        fprintf(stderr, "%s\n", attempt.data.errorMessage);
         free(attempt.data.errorMessage);
         return 1;
     }

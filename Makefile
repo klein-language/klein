@@ -19,14 +19,14 @@ build: $(TARGET)
 
 check: CFLAGS = -Wall -lm -g -ggdb3
 check: $(TARGET)
-	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose --log-file=.cache/valgrind-out.txt ./$(TARGET) ./tests/test.micro
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose --log-file=.cache/valgrind-out.txt ./$(TARGET) ./tests/test.klein
 
 clean:
 	rm .cache -rf
 	mkdir .cache
 
 test: $(TARGET)
-	./$(TARGET) tests/test.micro
+	./$(TARGET) tests/test.klein
 
 .PHONY: all clean check
 

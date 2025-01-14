@@ -1,4 +1,0 @@
-print("Enter your name: ");
-let name = input();
-print("your name is: ");
-print(name);

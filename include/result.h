@@ -92,10 +92,10 @@ void* unwrapUnsafe(Result result);
         memory__;                                                           \
     })
 
-#define ERROR(code, ...) ({                           \
-    char target[10];                                  \
-    sprintf(target, "%d", code);                      \
-    error("(code ", target, ") ", __VA_ARGS__, NULL); \
+#define ERROR(code, ...) ({                                   \
+    char target[10];                                          \
+    sprintf(target, "%d", code);                              \
+    error("Error (code E", target, "): ", __VA_ARGS__, NULL); \
 })
 
 #endif

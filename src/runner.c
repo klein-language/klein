@@ -14,6 +14,9 @@ static const char* EXPRESSION_TYPE_NAMES[] = {
     "block",
     "unary expression",
     "identifier",
+    "builtin expression",
+    "type expression",
+    "object",
 };
 
 Result
@@ -35,6 +38,8 @@ Result evaluateExpression(Context* context, Expression* expression) {
         case EXPRESSION_STRING:
         case EXPRESSION_BOOLEAN:
         case EXPRESSION_IDENTIFIER:
+        case EXPRESSION_TYPE:
+        case EXPRESSION_OBJECT:
         case EXPRESSION_FUNCTION: {
             return ok(expression);
         }
@@ -57,6 +62,12 @@ Result evaluateExpression(Context* context, Expression* expression) {
                 // Function call
                 case UNARY_OPERATION_FUNCTION_CALL: {
                     switch (unary.expression->type) {
+                        case EXPRESSION_BUILTIN_FUNCTION: {
+                            if (unary.expression->data.builtinFunction.thisObject != NULL) {
+                                prependToList(&unary.operation.data.functionCall, unary.expression->data.builtinFunction.thisObject);
+                            }
+                            return unary.expression->data.builtinFunction.function(context, unary.operation.data.functionCall);
+                        }
                         case EXPRESSION_FUNCTION: {
                             return evaluateBlock(context, &unary.expression->data.function.body);
                         }
@@ -65,9 +76,9 @@ Result evaluateExpression(Context* context, Expression* expression) {
 
                             // Builtin function
                             if (strcmp(identifier, "builtin") == 0) {
-                                char* builtinName = ((Expression*) unary.operation.data.functionCall.data[0])->data.string;
+                                char* builtinName = TRY(getObjectInternal(((Expression*) unary.operation.data.functionCall.data[0])->data.object, "string_value"));
                                 Result (*function)(void*, List) = TRY(getBuiltin(builtinName));
-                                return ok(HEAP(((Expression) {.type = EXPRESSION_BUILTIN_FUNCTION, .data = (ExpressionData) {.builtinFunction = function}}), Expression));
+                                return ok(HEAP(((Expression) {.type = EXPRESSION_BUILTIN_FUNCTION, .data = (ExpressionData) {.builtinFunction = {.function = function, .thisObject = NULL}}}), Expression));
                             }
 
                             Expression* value = TRY(getVariable(*context->scope, identifier));
@@ -76,7 +87,10 @@ Result evaluateExpression(Context* context, Expression* expression) {
                             }
 
                             if (value->type == EXPRESSION_BUILTIN_FUNCTION) {
-                                return value->data.builtinFunction(context, unary.operation.data.functionCall);
+                                if (value->data.builtinFunction.thisObject != NULL) {
+                                    prependToList(&unary.operation.data.functionCall, unary.expression->data.builtinFunction.thisObject);
+                                }
+                                return value->data.builtinFunction.function(context, unary.operation.data.functionCall);
                             }
 
                             return ERROR(ERROR_CALL_NON_FUNCTION, "Attempted to call a non-function");
@@ -103,7 +117,26 @@ Result evaluateExpression(Context* context, Expression* expression) {
         case EXPRESSION_BINARY: {
             Expression* left = TRY(evaluateExpression(context, expression->data.binary.left));
             Expression* right = TRY(evaluateExpression(context, expression->data.binary.right));
+
             switch (expression->data.binary.operation) {
+                // Field access
+                case BINARY_OPERATION_DOT: {
+                    if (right->type != EXPRESSION_IDENTIFIER) {
+                        return ERROR(ERROR_INVALID_OPERAND, "Right hand side of dot must be an identifier");
+                    }
+
+                    if (left->type != EXPRESSION_OBJECT) {
+                        return ERROR(ERROR_INVALID_OPERAND, "Left hand side of dot must be an object");
+                    }
+                    Expression* fieldValue = TRY(getObjectField(left->data.object, right->data.identifier));
+                    if (fieldValue->type == EXPRESSION_FUNCTION) {
+                        fieldValue->data.function.thisObject = left;
+                    } else if (fieldValue->type == EXPRESSION_BUILTIN_FUNCTION) {
+                        fieldValue->data.builtinFunction.thisObject = left;
+                    }
+
+                    return ok(fieldValue);
+                }
 
                 // Addition
                 case BINARY_OPERATION_PLUS: {

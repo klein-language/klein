@@ -58,6 +58,26 @@ Result appendToList(List* list, void* value) {
     return ok(NULL);
 }
 
+Result prependToList(List* list, void* value) {
+    if (list == NULL) {
+        return ERROR(ERROR_INTERNAL, "Attempted to prepend to a null list");
+    }
+
+    if (list->size == list->capacity) {
+        list->capacity *= 2;
+        list->data = NONNULL(realloc(list->data, sizeof(void*) * list->capacity));
+    }
+
+    for (int index = list->size; index > 0; index--) {
+        list->data[index] = list->data[index - 1];
+    }
+
+    list->data[0] = value;
+    list->size++;
+
+    return ok(NULL);
+}
+
 bool isListEmpty(List* list) {
     return list->size == 0;
 }

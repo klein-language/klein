@@ -1,6 +1,7 @@
 #ifndef PARSER_H
 #define PARSER_H
 
+#include "lexer.h"
 #include "list.h"
 #include "result.h"
 
@@ -23,12 +24,20 @@ typedef enum {
     EXPRESSION_BLOCK,
     EXPRESSION_UNARY,
     EXPRESSION_IDENTIFIER,
-    EXPRESSION_BUILTIN_FUNCTION
+    EXPRESSION_BUILTIN_FUNCTION,
+    EXPRESSION_TYPE,
+    EXPRESSION_OBJECT,
 } ExpressionType;
+
+typedef struct Expression Expression;
 
 typedef struct {
 
 } Type;
+
+typedef struct {
+    List fields;
+} TypeDeclaration;
 
 /**
  * A parameter in a function expression.
@@ -42,6 +51,11 @@ typedef struct {
 } Parameter;
 
 typedef struct {
+    Expression* thisObject;
+    Result (*function)(void*, List);
+} BuiltinFunction;
+
+typedef struct {
     /**
      * The parameters of this function. This `List` contains elements of
      * type `Parameter`.
@@ -53,9 +67,29 @@ typedef struct {
 
     /** The body of this function. */
     Block body;
+
+    Expression* thisObject;
 } Function;
 
-typedef struct Expression Expression;
+typedef union {
+    char* identifier;
+    Function function;
+} TypeData;
+
+typedef enum {
+    TYPE_LITERAL_FUNCTION,
+    TYPE_LITERAL_IDENTIFIER,
+} TypeLiteralType;
+
+typedef struct {
+    TypeData data;
+    TypeLiteralType type;
+} TypeLiteral;
+
+typedef struct {
+    List fields;
+    List internals;
+} Object;
 
 typedef enum {
     BINARY_OPERATION_PLUS,
@@ -65,6 +99,7 @@ typedef enum {
     BINARY_OPERATION_POWER,
     BINARY_OPERATION_AND,
     BINARY_OPERATION_OR,
+    BINARY_OPERATION_DOT,
     BINARY_OPERATION_LESS_THAN,
     BINARY_OPERATION_GREATER_THAN,
     BINARY_OPERATION_LESS_THAN_OR_EQUAL_TO,
@@ -119,13 +154,30 @@ typedef union {
 
     bool boolean;
 
-    Result (*builtinFunction)(void*, List);
+    BuiltinFunction builtinFunction;
+
+    TypeDeclaration typeDeclaration;
+
+    Object object;
 } ExpressionData;
 
 struct Expression {
     ExpressionType type;
     ExpressionData data;
 };
+
+typedef struct {
+    char* name;
+    void* value;
+} InternalField;
+
+typedef struct {
+    char* name;
+    Expression value;
+} Field;
+
+Result getObjectInternal(Object object, char* name);
+Result getObjectField(Object object, char* name);
 
 typedef enum {
     STATEMENT_DECLARATION,
@@ -147,6 +199,13 @@ typedef struct {
     StatementData data;
     StatementType type;
 } Statement;
+
+typedef struct BinaryOperator BinaryOperator;
+struct BinaryOperator {
+    BinaryOperator* precedent;
+    TokenType* tokenTypes;
+    int tokenTypeCount;
+};
 
 /**
  * A program's abstract syntax tree.
