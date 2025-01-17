@@ -6,6 +6,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+static bool isReturning = false;
+static Expression returnValue;
+
 PRIVATE Result evaluateStatement(Statement* statement);
 
 PRIVATE Result evaluateBlock(Block* block, Expression* output) {
@@ -55,7 +58,8 @@ PRIVATE Result evaluateExpression(Expression* expression, Expression* output) {
 		}
 
 		case EXPRESSION_BUILTIN_FUNCTION: {
-			UNREACHABLE;
+			DEBUG_START("Evaluating", "builtin function");
+			RETURN_OK(output, *expression);
 		}
 
 		// For loop
@@ -98,13 +102,19 @@ PRIVATE Result evaluateExpression(Expression* expression, Expression* output) {
 			while (true) {
 				DEBUG_LOG("Evaluating", "while loop condition");
 				TRY_LET(Expression, condition, evaluateExpression, &expression->data.whileLoop->condition);
+				DEBUG_LOGN("Done", "evaluating while loop condition: ");
+
+				if (condition.type != EXPRESSION_BOOLEAN) {
+					return ERROR_INVALID_ARGUMENTS;
+				}
 
 				if (!condition.data.boolean) {
 					break;
 				}
 
-				DEBUG_LOG("Evaluating", "while loop body");
+				DEBUG_START("Evaluating", "while loop body");
 				TRY_LET(Expression, blockValue, evaluateBlock, &expression->data.whileLoop->body);
+				DEBUG_END("evaluating while loop body");
 			}
 
 			Expression null = (Expression) {
@@ -145,6 +155,7 @@ PRIVATE Result evaluateExpression(Expression* expression, Expression* output) {
 						case EXPRESSION_BUILTIN_FUNCTION: {
 							if (unary->expression.data.builtinFunction.thisObject != NULL) {
 								TRY(prependToExpressionList(&unary->operation.data.functionCall, *unary->expression.data.builtinFunction.thisObject));
+								unary->expression.data.builtinFunction.thisObject = NULL;
 							}
 							DEBUG_END("evaluating function call");
 							DEBUG_END("evaluating unary expression");
@@ -191,6 +202,7 @@ PRIVATE Result evaluateExpression(Expression* expression, Expression* output) {
 							if (value->type == EXPRESSION_FUNCTION) {
 								if (value->data.function.thisObject != NULL) {
 									TRY(prependToExpressionList(&unary->operation.data.functionCall, *unary->expression.data.function.thisObject));
+									unary->expression.data.function.thisObject = NULL;
 								}
 
 								for (size_t parameterNumber = 0; parameterNumber < value->data.function.parameters.size; parameterNumber++) {
@@ -198,6 +210,7 @@ PRIVATE Result evaluateExpression(Expression* expression, Expression* output) {
 										.name = value->data.function.parameters.data[parameterNumber].name,
 										.value = unary->operation.data.functionCall.data[parameterNumber],
 									};
+									TRY_LET(double*, _value, getNumber, declaration.value);
 									TRY(setVariable(value->data.function.body.innerScope, declaration));
 								}
 
@@ -208,6 +221,11 @@ PRIVATE Result evaluateExpression(Expression* expression, Expression* output) {
 								DEBUG_END("evaluating unary expression");
 								DEBUG_END("evaluating expression");
 
+								if (isReturning) {
+									isReturning = false;
+									RETURN_OK(output, returnValue);
+								}
+
 								return OK;
 							}
 
@@ -215,6 +233,7 @@ PRIVATE Result evaluateExpression(Expression* expression, Expression* output) {
 							if (value->type == EXPRESSION_BUILTIN_FUNCTION) {
 								if (value->data.builtinFunction.thisObject != NULL) {
 									TRY(prependToExpressionList(&unary->operation.data.functionCall, *unary->expression.data.builtinFunction.thisObject));
+									unary->expression.data.builtinFunction.thisObject = NULL;
 								}
 								DEBUG_END("evaluating identifier function call");
 								DEBUG_END("evaluating function call");
@@ -241,6 +260,8 @@ PRIVATE Result evaluateExpression(Expression* expression, Expression* output) {
 
 				// Negation
 				case UNARY_OPERATION_NOT: {
+					DEBUG_START("Evaluating", "unary not expression");
+
 					if (unary->expression.type != EXPRESSION_BOOLEAN) {
 						return ERROR_INVALID_OPERAND;
 					}
@@ -252,6 +273,7 @@ PRIVATE Result evaluateExpression(Expression* expression, Expression* output) {
 							.boolean = result,
 						},
 					};
+					DEBUG_END("evaluating unary not expression");
 					RETURN_OK(output, booleanExpression);
 				}
 			}
@@ -400,6 +422,10 @@ PRIVATE Result evaluateExpression(Expression* expression, Expression* output) {
 }
 
 PRIVATE Result evaluateStatement(Statement* statement) {
+	if (isReturning) {
+		return OK;
+	}
+
 	DEBUG_START("Evaluating", "statement");
 	switch (statement->type) {
 		case STATEMENT_EXPRESSION: {
@@ -421,6 +447,13 @@ PRIVATE Result evaluateStatement(Statement* statement) {
 			return OK;
 		}
 		case STATEMENT_RETURN: {
+			isReturning = true;
+			TRY(evaluateExpression(&statement->data.returnExpression, &returnValue));
+			if (returnValue.type == EXPRESSION_IDENTIFIER) {
+				Expression* value;
+				TRY(getVariable(*CONTEXT->scope, returnValue.data.identifier, &value));
+				returnValue = *value;
+			}
 			return OK;
 		}
 	}

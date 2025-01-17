@@ -3,81 +3,8 @@
 #include "../include/parser.h"
 #include "../include/result.h"
 #include "../include/sugar.h"
+#include <math.h>
 #include <string.h>
-
-/**
- * The built-in `print` function. This converts it's argument into a string and prints it,
- * ending with a trailing newline, and returning `null`.
- *
- * # Parameters
- *
- * - `context` - Data about the current part of the program being compiled. In this case,
- *   the current scope (stored on the `context` is used to resolve an identifier in the case
- *   that the given argument is an identifier.
- *
- * - `arguments` - The arguments passed to `print`, as an expression list.
- *
- * - `output` - Where to place the return value from `print`. In the case of `print`, nothing
- *   is returned, so this is unused. However, to conform to the `BuiltinFunction` function pointer
- *   type and called as a generic return value from `getBuiltin()`, the parameter is included.
- *
- * # Errors
- *
- * If the given argument list doesnt contain exactly 1 argument, an error is returned.
- * If the given argument is an identifier that can't be resolved, an error is returned.
- * If the given argument isn't a string, an error is returned.
- * If the underlying `printf` call fails (for any reason), an error is returned.
- */
-PRIVATE Result print(ExpressionList* arguments, Expression* output) {
-	DEBUG_START("Evaluating", "builtin function call print()");
-	SUPPRESS_UNUSED(output);
-
-	if (arguments->size < 1) {
-		return ERROR_INVALID_ARGUMENTS;
-	}
-
-	Object* options;
-
-	// Default options
-	Object defaultOptions;
-	FieldList fields;
-	TRY(emptyFieldList(&fields));
-	Expression trueExpression = (Expression) {
-		.type = EXPRESSION_BOOLEAN,
-		.data = (ExpressionData) {
-			.boolean = true,
-		},
-	};
-	TRY(appendToFieldList(&fields, (Field) {.name = "newline", .value = trueExpression}));
-	defaultOptions = (Object) {
-		.fields = fields,
-	};
-
-	if (arguments->size == 2) {
-		options = arguments->data[1].data.object;
-	} else {
-		options = &defaultOptions;
-	}
-
-	Expression* expression = arguments->data;
-	if (expression->type == EXPRESSION_IDENTIFIER) {
-		TRY(getVariable(*CONTEXT->scope, expression->data.identifier, &expression));
-	}
-
-	TRY_LET(String*, stringValue, getString, *expression);
-
-	String newline = "\n";
-	TRY_LET(Expression*, useNewline, getObjectField, *options, "newline");
-	if (!useNewline->data.boolean) {
-		newline = "";
-	}
-
-	if (printf("%s%s", *stringValue, newline) < 0) {
-		return ERROR_PRINT;
-	}
-
-	return OK;
-}
 
 /**
  * The built-in `input` function. This reads a line from `stdin` and returns it as a string
@@ -157,7 +84,122 @@ PRIVATE Result listAppend(ExpressionList* arguments, Expression* output) {
 	Expression list = arguments->data[0];
 	TRY_LET(ExpressionList*, elements, getList, list);
 
-	TRY(appendToExpressionList(elements, arguments->data[1]));
+	Expression* value = &arguments->data[1];
+	if (value->type == EXPRESSION_IDENTIFIER) {
+		TRY(getVariable(*CONTEXT->scope, value->data.identifier, &value));
+	}
+
+	TRY(appendToExpressionList(elements, *value));
+
+	return OK;
+}
+
+PRIVATE Result expressionToString(Expression expression, Expression* output) {
+	Expression* value = &expression;
+	if (value->type == EXPRESSION_IDENTIFIER) {
+		TRY(getVariable(*CONTEXT->scope, value->data.identifier, &value));
+	}
+
+	if (value->type == EXPRESSION_OBJECT) {
+		if (isNumber(*value)) {
+			TRY_LET(double*, number, getNumber, *value);
+
+			// Integer
+			if (floor(*number) == *number) {
+				int len = snprintf(NULL, 0, "%d", (int) *number);
+				String result = malloc(len + 1);
+				snprintf(result, len + 1, "%d", (int) *number);
+				TRY_LET(Expression, string, stringExpression, result);
+				RETURN_OK(output, string);
+			}
+
+			int len = snprintf(NULL, 0, "%f", *number);
+			String result = malloc(len + 1);
+			snprintf(result, len + 1, "%f", *number);
+
+			TRY_LET(Expression, string, stringExpression, result);
+			RETURN_OK(output, string);
+		}
+
+		if (isString(*value)) {
+			RETURN_OK(output, *value);
+		}
+	}
+
+	return OK;
+}
+
+/**
+ * The built-in `print` function. This converts it's argument into a string and prints it,
+ * ending with a trailing newline, and returning `null`.
+ *
+ * # Parameters
+ *
+ * - `context` - Data about the current part of the program being compiled. In this case,
+ *   the current scope (stored on the `context` is used to resolve an identifier in the case
+ *   that the given argument is an identifier.
+ *
+ * - `arguments` - The arguments passed to `print`, as an expression list.
+ *
+ * - `output` - Where to place the return value from `print`. In the case of `print`, nothing
+ *   is returned, so this is unused. However, to conform to the `BuiltinFunction` function pointer
+ *   type and called as a generic return value from `getBuiltin()`, the parameter is included.
+ *
+ * # Errors
+ *
+ * If the given argument list doesnt contain exactly 1 argument, an error is returned.
+ * If the given argument is an identifier that can't be resolved, an error is returned.
+ * If the given argument isn't a string, an error is returned.
+ * If the underlying `printf` call fails (for any reason), an error is returned.
+ */
+PRIVATE Result print(ExpressionList* arguments, Expression* output) {
+	DEBUG_START("Evaluating", "builtin function call print()");
+	SUPPRESS_UNUSED(output);
+
+	if (arguments->size < 1) {
+		return ERROR_INVALID_ARGUMENTS;
+	}
+
+	Object* options;
+
+	// Default options
+	Object defaultOptions;
+	FieldList fields;
+	TRY(emptyFieldList(&fields));
+	Expression trueExpression = (Expression) {
+		.type = EXPRESSION_BOOLEAN,
+		.data = (ExpressionData) {
+			.boolean = true,
+		},
+	};
+	TRY(appendToFieldList(&fields, (Field) {.name = "newline", .value = trueExpression}));
+	defaultOptions = (Object) {
+		.fields = fields,
+	};
+
+	if (arguments->size == 2) {
+		options = arguments->data[1].data.object;
+	} else {
+		options = &defaultOptions;
+	}
+
+	Expression* expression = arguments->data;
+	if (expression->type == EXPRESSION_IDENTIFIER) {
+		TRY(getVariable(*CONTEXT->scope, expression->data.identifier, &expression));
+	}
+
+	TRY_LET(Expression, string, expressionToString, *expression);
+	TRY_LET(String*, stringValue, getString, string);
+
+	String newline = "\n";
+	TRY_LET(Expression*, useNewline, getObjectField, *options, "newline");
+	if (!useNewline->data.boolean) {
+		newline = "";
+	}
+
+	if (printf("%s%s", *stringValue, newline) < 0) {
+		return ERROR_PRINT;
+	}
 
 	return OK;
 }

@@ -100,6 +100,11 @@ bool isNumber(Expression expression) {
 	return getNumber(expression, &output) == OK;
 }
 
+bool isList(Expression expression) {
+	ExpressionList* output;
+	return getList(expression, &output) == OK;
+}
+
 /**
  * Converts a C number (`double`) into a Klein number literal.
  *

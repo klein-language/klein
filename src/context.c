@@ -116,7 +116,7 @@ Result getVariable(Scope scope, String name, Expression** output) {
 	while (current != NULL) {
 		FOR_EACH_REF(Declaration * variable, current->variables) {
 			if (strcmp(variable->name, name) == 0) {
-				DEBUG_LOG("Resolved", "variable \"%s\" to be a %s", name, expressionTypeName(variable->value.type));
+				DEBUG_LOGN("Resolved", "variable %s: %s = ", name, expressionTypeName(variable->value.type));
 				RETURN_OK(output, &variable->value);
 			}
 		}

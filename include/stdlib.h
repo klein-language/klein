@@ -12,7 +12,7 @@
 	"let range = function(low: Number, high: Number): List {" \
 	"    let numbers = [];"                                   \
 	"    let current = low;"                                  \
-	"    while current <= low {"                              \
+	"    while current <= high {"                             \
 	"        numbers.append(current);"                        \
 	"        current = current + 1;"                          \
 	"    };"                                                  \

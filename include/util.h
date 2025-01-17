@@ -64,6 +64,12 @@ typedef char* String;
 	fprintf(stderr, "%s ", STYLE(action, GREEN, BOLD));             \
 	fprintf(stderr, __VA_ARGS__);                                   \
 	fprintf(stderr, "\n")
+#define DEBUG_LOGN(action, ...)                                     \
+	for (int indent = 0; indent < CONTEXT->debugIndent; indent++) { \
+		fprintf(stderr, "%s ", COLOR("│", WHITE));                  \
+	}                                                               \
+	fprintf(stderr, "%s ", STYLE(action, GREEN, BOLD));             \
+	fprintf(stderr, __VA_ARGS__);
 #define DEBUG_ERROR(...)                                            \
 	for (int indent = 0; indent < CONTEXT->debugIndent; indent++) { \
 		fprintf(stderr, "%s ", COLOR("│", WHITE));                  \
@@ -75,6 +81,7 @@ typedef char* String;
 #define DEBUG_START(action, ...)
 #define DEBUG_END(...)
 #define DEBUG_LOG(action, ...)
+#define DEBUG_LOGN(action, ...)
 #define DEBUG_ERROR(...)
 #endif
 

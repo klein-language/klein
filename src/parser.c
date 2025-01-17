@@ -885,6 +885,55 @@ PRIVATE void freeExpression(Expression expression) {
 	}
 }
 
+Result debugExpression(Expression expression) {
+	switch (expression.type) {
+		case EXPRESSION_OBJECT: {
+			if (isNumber(expression)) {
+				TRY_LET(double*, value, getNumber, expression);
+				fprintf(stderr, "%f", *value);
+				return OK;
+			}
+			if (isString(expression)) {
+				TRY_LET(String*, value, getString, expression);
+				fprintf(stderr, "%s", *value);
+				return OK;
+			}
+			if (isList(expression)) {
+				TRY_LET(ExpressionList*, elements, getList, expression);
+				fprintf(stderr, "[");
+				FOR_EACHP(Expression element, elements) {
+					debugExpression(element);
+					fprintf(stderr, ", ");
+				}
+				END;
+				fprintf(stderr, "]");
+				return OK;
+			}
+
+			// Object
+			fprintf(stderr, "{");
+			FOR_EACH(Field field, expression.data.object->fields) {
+				fprintf(stderr, "%s = ", field.name);
+				debugExpression(field.value);
+				fprintf(stderr, ", ");
+			}
+			END;
+			fprintf(stderr, "}");
+			return OK;
+		}
+		case EXPRESSION_IDENTIFIER: {
+			fprintf(stderr, "%s", expression.data.identifier);
+			return OK;
+		}
+		case EXPRESSION_BOOLEAN: {
+			fprintf(stderr, "%s", expression.data.boolean ? "true" : "false");
+			return OK;
+		}
+	}
+
+	return OK;
+}
+
 PRIVATE void freeStatement(Statement statement) {
 	switch (statement.type) {
 		case STATEMENT_DECLARATION: {

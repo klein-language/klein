@@ -119,10 +119,10 @@ PRIVATE Result getNextToken(String sourceCode, Token* output) {
 	}
 
 	// Number
-	if (*current >= '0' && *current <= '1') {
+	if (*current >= '0' && *current <= '9') {
 		CharList characters;
 		TRY(emptyCharList(&characters));
-		while ((*current >= '0' && *current <= '1') && current < sourceCode + strlen(sourceCode)) {
+		while ((*current >= '0' && *current <= '9') && current < sourceCode + strlen(sourceCode)) {
 			TRY(appendToCharList(&characters, *current));
 			current++;
 		}

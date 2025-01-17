@@ -246,5 +246,6 @@ Result getObjectField(Object object, char* name, Expression** output);
 Result parse(TokenList* tokens, Program* output);
 String expressionTypeName(ExpressionType type);
 void freeProgram(Program program);
+Result debugExpression(Expression expression);
 
 #endif
