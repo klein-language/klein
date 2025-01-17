@@ -1,32 +1,64 @@
+CC ?= clang
+LOCATION ?= /usr/bin
+DEBUG ?= false
+
 MAKEFLAGS += --silent
-CC = gcc
-CFLAGS = -Wall -lm
-TARGET = build/script
+
+CACHEDIR = .cache
+OBJDIR = $(CACHEDIR)/obj
+VALGRINDDIR = $(CACHEDIR)/valgrind
+TARGET = build/klein
+
 SRCS = $(wildcard src/*.c)
-OBJDIR = .cache
 OBJS = $(SRCS:src/%.c=$(OBJDIR)/%.o)
 
-all: $(TARGET)
+# Clang flags
+ifeq ($(CC), clang)
+	CFLAGS = -ferror-limit=0 -fdiagnostics-color=always -Wall -Wextra -Weverything -Wno-padded -Wno-extra-semi-stmt -Wno-switch-default -Wno-unsafe-buffer-usage -Wno-declaration-after-statement -Wno-switch-enum
+endif
 
+# Debug
+ifeq ($(DEBUG), true)
+	CFLAGS += -DDEBUG_ON
+endif
+
+# Build when just running `make`
+all: build
+	./$(TARGET)
+
+# Link & compile object files into native executable
 $(TARGET): $(OBJS)
 	$(CC) $(OBJS) -o $(TARGET) -lm
 
+# Compilation into object files
 $(OBJDIR)/%.o: src/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-build: CFLAGS = -Wall -o3 -lm
-build: $(TARGET)
+# Build the binary
+build: CFLAGS += -O3
+build: clean $(TARGET)
 
-check: CFLAGS = -Wall -lm -g -ggdb3
-check: $(TARGET)
-	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose --log-file=.cache/valgrind-out.txt ./$(TARGET) ./tests/test.klein
+# Build & run Valgrind to check for memory errors
+check: CFLAGS += -g -ggdb3
+check: build
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose --log-file=.cache/valgrind/valgrind-out.txt ./$(TARGET) ./tests/test.klein
 
+# Clean cache files (object files, valgrind logs, etc.)
 clean:
-	rm .cache -rf
-	mkdir .cache
+	rm $(CACHEDIR) -rf
+	mkdir $(CACHEDIR)
+	mkdir $(VALGRINDDIR)
+	mkdir $(OBJDIR)
+	rm build -rf
+	mkdir build
 
-test: $(TARGET)
+# Run on the test file
+test: build
 	./$(TARGET) tests/test.klein
 
-.PHONY: all clean check
+# Install on the system
+install: build
+	sudo mkdir -p $(LOCATION)
+	sudo mv ./$(TARGET) $(LOCATION)/klein
 
+.PHONY: all clean check build test install

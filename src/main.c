@@ -1,7 +1,6 @@
 #include "../include/context.h"
 #include "../include/io.h"
 #include "../include/lexer.h"
-#include "../include/list.h"
 #include "../include/parser.h"
 #include "../include/result.h"
 #include "../include/runner.h"
@@ -30,36 +29,50 @@
  * - `parse()` from `parser.h`
  * - `evaluate()` from `runner.h`
  */
-Result runFile(char* filePath) {
+PRIVATE Result runFile(String filePath) {
+	char* dot = strrchr(filePath, '.');
+	if (!dot || strcmp(dot, ".klein")) {
+		fprintf(stderr, "\n%s Attempting to run a file that doesn't end with %s. Continue?: ", STYLE("Warning: ", YELLOW, BOLD), COLOR(".klein", CYAN));
+		String response = input();
+		if (!(strcmp(response, "Y") && strcmp(response, "y") && strcmp(response, "yes") && strcmp(response, "Yes") && strcmp(response, "YES"))) {
+			fprintf(stderr, "\n%s\n\n", STYLE("Cancelling.", RED, BOLD));
+			exit(1);
+		}
+		fprintf(stderr, "\n");
+	}
 
 	// Read source code
-	char* sourceCode = TRY(readFile(filePath));
-	char* withStdlib = NONNULL(malloc(strlen(sourceCode) + strlen(STDLIB) + 1));
-	strcpy(withStdlib, STDLIB);
-	strcat(withStdlib, sourceCode);
+	TRY_LET(String, rawSourceCode, readFile, filePath);
+
+	// Stdlib
+	String sourceCode = malloc(strlen(rawSourceCode) + strlen(STDLIB) + 1);
+	ASSERT_NONNULL(sourceCode);
+	strcpy(sourceCode, STDLIB);
+
+	// Combine
+	strcat(sourceCode, rawSourceCode);
+	free(rawSourceCode);
 
 	// Tokenize
-	List tokens = FREE(TRY(tokenize(withStdlib)), List);
+	TRY_LET(TokenList, tokens, tokenize, sourceCode);
 	free(sourceCode);
-	Token** tokenStart = (Token**) tokens.data;
+
+	// Context
+	Context context;
+	TRY(newContext(&context));
 
 	// Parse
-	Context context = FREE(TRY(newContext()), Context);
-	Program program = FREE(TRY(parse(&context, &tokens)), Program);
-	free(tokenStart);
+	TRY_LET(Program, program, parse, &context, &tokens);
 
 	// Run
 	TRY(run(&context, program));
 
 	// Cleanup
-	for (int statementNumber = 0; statementNumber < program.statements.size; statementNumber++) {
-		freeStatement(program.statements.data[statementNumber]);
-	}
-	free(program.statements.data);
-	freeContext(&context);
+	freeProgram(program);
+	freeContext(context);
 
 	// Done
-	return ok(NULL);
+	return OK;
 }
 
 /**
@@ -68,10 +81,11 @@ Result runFile(char* filePath) {
  * More specifically, main wraps *this* function, and converts the `Result` into
  * an exit code. This handles the main logic of the program.
  */
-Result mainWrapper(int numberOfArguments, char** arguments) {
-	if (numberOfArguments != 2) {
-		return ERROR(ERROR_BAD_COMMAND, "One argument expected.");
-	}
+PRIVATE Result mainWrapper(int numberOfArguments, char** arguments) {
+	if (numberOfArguments == 1) {
+		printHelp(false);
+		return OK;
+	};
 
 	return runFile(arguments[1]);
 }
@@ -83,11 +97,9 @@ Result mainWrapper(int numberOfArguments, char** arguments) {
 int main(int numberOfArguments, char** arguments) {
 	Result attempt = mainWrapper(numberOfArguments, arguments);
 
-	if (!attempt.success) {
-		fprintf(stderr, "%s\n", attempt.data.errorMessage);
-		free(attempt.data.errorMessage);
-		return 1;
+	if (attempt != OK) {
+		fprintf(stderr, "%s %s\n\n", STYLE("Error:", RED, BOLD), errorMessage(attempt));
 	}
 
-	return 0;
+	return (int) attempt;
 }

@@ -1,43 +1,34 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 /**
- * Frees the heap memory pointed to by `expression`, and returns the data that was stored
- * there as a stack value.
- *
- * # Parameters
- *
- * - `expression` - An expression returning a heap pointer to free.
- * - `type` - The type of data being allocated on the heap.
- *
- * # Returns
- *
- * The stack value.
- *
- * # Safety
- *
- * If the given expression isn't freeable, behavior is undefined.
+ * A typical String. Using `String` is equivalent to `char*`, but they
+ * convey different intent. `char*` is meant to refer to a pointer to
+ * a single character (or maybe character array in some situations),
+ * whereas `String` refers specifically to a null-terminated character
+ * array.
  */
-#define FREE(expression, type) ({ \
-	type* pointer = expression;   \
-	type value = *pointer;        \
-	free(pointer);                \
-	value;                        \
-})
+typedef char* String;
+
+/** Suppresses an "unused variable" warning.*/
+#define SUPPRESS_UNUSED(variable) (void) variable
 
 /**
- * Allocates space for the given type on the heap and stores the given value there,
- * returning a pointer to the value.
+ * Declares that a function isn't called outside of this compilation unit,
+ * meaning it doesn't need a declaration in a header file.
  */
-#define HEAP(expression_, type_) ({                   \
-	type_ value_ = (expression_);                     \
-	type_* pointer_ = NONNULL(malloc(sizeof(type_))); \
-	*pointer_ = value_;                               \
-	pointer_;                                         \
-})
+#define PRIVATE static
 
-#define LIBRARY __declspec(dllexport)
+#ifdef DEBUG_ON
+#define DEBUG(...) fprintf(stderr, __VA_ARGS__);
+#else
+#define DEBUG(message)
+#endif
+
+void debug(String message);
 
 #endif

@@ -4,81 +4,112 @@
 #include "result.h"
 #include "util.h"
 #include <stdbool.h>
+#include <stdlib.h>
+
+typedef char Char;
+
+#define DEFINE_LIST(type)                                       \
+	typedef struct type##List type##List;                       \
+	struct type##List {                                         \
+		size_t size;                                            \
+		size_t capacity;                                        \
+		type* data;                                             \
+	};                                                          \
+                                                                \
+	Result empty##type##List(type##List* output);               \
+	Result emptyHeap##type##List(type##List** output);          \
+	Result appendTo##type##List(type##List* list, type value);  \
+	Result prependTo##type##List(type##List* list, type value); \
+	bool is##type##ListEmpty(type##List list);                  \
+	type getFrom##type##ListUnchecked(type##List list, size_t index);
+
+#define IMPLEMENT_LIST(type)                                                         \
+	Result empty##type##List(type##List* output) {                                   \
+		*output = (type##List) {                                                     \
+			.size = 0,                                                               \
+			.capacity = 8,                                                           \
+			.data = malloc(sizeof(type) * 8),                                        \
+		};                                                                           \
+		ASSERT_NONNULL(output->data);                                                \
+		return OK;                                                                   \
+	}                                                                                \
+                                                                                     \
+	Result emptyHeap##type##List(type##List** output) {                              \
+		*output = malloc(sizeof(type##List));                                        \
+		ASSERT_NONNULL(*output);                                                     \
+		**output = (type##List) {                                                    \
+			.size = 0,                                                               \
+			.capacity = 8,                                                           \
+			.data = malloc(sizeof(type) * 8),                                        \
+		};                                                                           \
+		ASSERT_NONNULL((*output)->data);                                             \
+		return OK;                                                                   \
+	}                                                                                \
+                                                                                     \
+	Result appendTo##type##List(type##List* list, type value) {                      \
+		if (list->size == list->capacity) {                                          \
+			list->capacity *= 2;                                                     \
+			list->data = (type*) realloc(list->data, sizeof(type) * list->capacity); \
+			ASSERT_NONNULL(list->data);                                              \
+		}                                                                            \
+                                                                                     \
+		list->data[list->size] = value;                                              \
+		list->size++;                                                                \
+                                                                                     \
+		return OK;                                                                   \
+	}                                                                                \
+                                                                                     \
+	Result prependTo##type##List(type##List* list, type value) {                     \
+		if (list->size == list->capacity) {                                          \
+			list->capacity *= 2;                                                     \
+			list->data = realloc(list->data, sizeof(type) * list->capacity);         \
+			ASSERT_NONNULL(list->data);                                              \
+		}                                                                            \
+                                                                                     \
+		for (size_t index = list->size; index > 0; index--) {                        \
+			list->data[index] = list->data[index - 1];                               \
+		}                                                                            \
+                                                                                     \
+		list->data[0] = value;                                                       \
+		list->size++;                                                                \
+                                                                                     \
+		return OK;                                                                   \
+	}                                                                                \
+                                                                                     \
+	bool is##type##ListEmpty(type##List list) {                                      \
+		return list.size == 0;                                                       \
+	}                                                                                \
+                                                                                     \
+	type getFrom##type##ListUnchecked(type##List list, size_t index) {               \
+		return list.data[index];                                                     \
+	}
 
 /**
- * A generic, growable list.
+ * Iterates over the given list, binding the given name to the current value.
  *
- * The elements of this list are stored in `list.data` contiguously in memory.
- * Thus, the `nth` element of a list can be accessed using `list->data[n]`, where
- * `n < list.size`.
+ * To iterate over a list pointer, use `FOR_EACHP`.
+ * To iterate over values by reference, use `FOR_EACH_REF`.
  *
- * For information on how this list expands, see `appendToList()`.
+ * This macro opens a block which must be closed when the loop ends.
+ *
+ * Note that this macro really confuses `clang-format`; It's recommended to use
+ * `END;` afterwards to close loop block.
  */
-typedef struct {
+#define FOR_EACH(name__, list__)                                 \
+	for (size_t index__ = 0; index__ < list__.size; index__++) { \
+		name__ = list__.data[index__];
 
-	/**
-	 * The data stored in this list, as an array of void pointers. The array is
-	 * not (necessarily) null-terminated; Instead, it's size is tracked by `size`.
-	 */
-	void** data;
+#define FOR_EACHP(name__, list__)                                 \
+	for (size_t index__ = 0; index__ < list__->size; index__++) { \
+		name__ = list__->data[index__];
 
-	/**
-	 * The number of elements currently stored in the list. This is equivalent to the
-	 * length of `data`.
-	 */
-	int size;
+#define FOR_EACH_REF(name__, list__)                             \
+	for (size_t index__ = 0; index__ < list__.size; index__++) { \
+		name__ = &list__.data[index__];
 
-	/**
-	 * The number of elements that memory has been allocated for in the list. This does
-	 * *not* necessarily reflect the number of elements stored in the list, but rather
-	 * the maximum number of elements that *could* currently be stored before allocating
-	 * more space. For the former, use `size`.
-	 */
-	int capacity;
+#define END }
 
-} List;
-
-Result emptyHeapList();
-Result emptyList(List* list);
-
-bool isListEmpty(List* list);
-
-/**
- * Appends a value to the end of a list. If the list is full (`size == capacity`),
- * it's capacity will be doubled.
- *
- * # Parameters
- *
- * - `list` - The list to append to
- * - `value` - The value to append, which may be `NULL`.
- *
- * # Returns
- *
- * `NULL`, wrapped in a `Result`, assuming success.
- *
- * # Errors
- *
- * If `list` or is `NULL`, an error is returned. If memory can't be
- * allocated, an error is returned.
- *
- * # Safety
- *
- * If the lifetime of the `list` pointer outlives the lifetime of the `value` pointer,
- * the `list` will be left with a dangling pointer. In other words, when calling this
- * function, `value` must live *at least as long as* `list`, otherwise behavior is
- * undefined.
- */
-Result appendToList(List* list, void* value);
-Result prependToList(List* list, void* value);
-
-/**
- * Creates a new empty list on the stack, returning an error `Result` from the current
- * function if memory couldn't be allocated for it.
- */
-#define EMPTY_LIST() ({    \
-	List list;             \
-	TRY(emptyList(&list)); \
-	list;                  \
-})
+DEFINE_LIST(Char)
+DEFINE_LIST(String)
 
 #endif

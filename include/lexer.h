@@ -64,7 +64,34 @@ typedef struct {
 	char* value;
 } Token;
 
-Result tokenize(char* sourceCode);
-void freeToken(Token* token);
+DEFINE_LIST(Token)
+
+/**
+ * Tokenizes the given string of Klein source code into a list of tokens.
+ * This is the first step of interpreting Klein code.
+ *
+ * # Parameters
+ *
+ * - `sourceCode` - The original, Klein source code. It may contain
+ *   syntax and semantic errors and this function will still return `OK`
+ *   as long as each individual token in the code is a valid Klein token.
+ *   It mustn't be `NULL`.
+ *
+ * - `output` - Where to store the resulting `TokenList`. It must point to
+ *   some memory (be it stack or heap) that already has enough space to hold
+ *   a `TokenList`; i.e. it could be the address of stack token or the result of
+ *   `malloc(sizeof(TokenList))`, but it can't be `NULL`, or an error will be returned.
+ *   The outputted tokens have copied strings from the original source code (because
+ *   they need to be null-terminated and the original source code is contiguous),
+ *   so it's not dependent on `sourceCode` being valid; i.e., if the string stored at
+ *   `sourceCode` is freed, `output` will still be valid.
+ *
+ * # Errors
+ *
+ * If memory for the token list fails to allocate, an error is returned.
+ * If the source code contains unrecognized tokens, an error is returned.
+ * If the given `sourceCode` or `output` is `NULL`, an error is returned.
+ */
+Result tokenize(char* sourceCode, TokenList* output);
 
 #endif

@@ -6,98 +6,122 @@
 #include <string.h>
 
 /**
- * Creates a token on the heap with the given type and value. The value
- * is also allocated on the heap, so `freeToken()` should be used to free
- * the token, which will also free the value, not just `free()`.
+ * Creates a token on the stack with the given type and value and stores
+ * the result in `output`.
  *
  * # Parameters
  *
- * - `type` - The token type
- * - `value` - The value of the token as it appears in the source code.
+ * - `type` - The type of the token
  *
- * # Returns
+ * - `value` - The string value of the token as it appears in the source code
+ *	 as a null-terminated `char*`. It must live at least as long as `output`.
+ *	 If this value is `NULL`, an error is returned.
  *
- * The token allocated on the heap wrapped in a `Result`, or an error `Result`
- * if heap allocation failed.
- */
-Result heapToken(TokenType type, char* value) {
-	Token* token = NONNULL(malloc(sizeof(Token)));
-	token->type = type;
-	token->value = NONNULL(malloc(sizeof(char) * strlen(value) + 1));
-	strcpy(token->value, value);
-	return ok(token);
-}
-
-void freeToken(Token* token) {
-	free(token->value);
-	free(token);
-}
-
-/**
- * Returns the next token in the given source code, leaving the source code unmodified.
- *
- * # Parameters
- *
- * - `sourceCode` - The source code to get the first token of.
- *
- * # Returns
- *
- * Returns the next `Token` wrapped in a `Result`.
+ * - `output` - The location to store the `Token` created. It must point to
+ *   some memory (be it stack or heap) that already has enough space to hold
+ *   a `Token`; i.e. it could be the address of stack token or the result of
+ *   `malloc(sizeof(Token))`, but it can't be `NULL`, or an error will be returned.
+ *   The token stored in this `output` is only valid as long as `value` is valid.
  *
  * # Errors
  *
- * Returns an error if the given source code starts with an unknown token, or if memory
- * fails to allocate.
+ * If the given string value is null, an error is returned.
  */
-Result getNextToken(char* sourceCode) {
+PRIVATE Result createToken(TokenType type, String value, Token* output) {
+	ASSERT_NONNULL(value);
+	ASSERT_NONNULL(output);
+	Token token = (Token) {
+		.type = type,
+		.value = value,
+	};
+
+	RETURN_OK(output, token);
+}
+
+/**
+ * Returns the next token that appears in the given source code, under the
+ * assumption that the given source code doesn't begin midway through a token.
+ *
+ * # Parameters
+ *
+ * - `sourceCode` - The source code as a null-terminated `char*`. If this value
+ *   is `NULL`, an error is returned. If it doesn't begin with a valid Klein token,
+ *   an error is returned.
+ *
+ * - `output` - The location to store the `Token` created. It must point to
+ *   some memory (be it stack or heap) that already has enough space to hold
+ *   a `Token`; i.e. it could be the address of stack token or the result of
+ *   `malloc(sizeof(Token))`, but it can't be `NULL`, or an error will be returned.
+ *   This outputted token has copied strings from the original source code (because
+ *   they need to be null-terminated and the original source code is contiguous),
+ *   so it's not dependent on `sourceCode` being valid; i.e., if the string stored at
+ *   `sourceCode` is freed, `output` will still be valid.
+ *
+ * # Errors
+ *
+ * If the given source code is `NULL`, an error is returned.
+ * If the given source code doesn't start with a valid Klein token, an error is
+ * returned.
+ */
+PRIVATE Result getNextToken(String sourceCode, Token* output) {
+	ASSERT_NONNULL(sourceCode);
+
 	char* current = sourceCode;
 
 	// Symbols
 	switch (*current) {
 		case '=':
-			return ok(TRY(heapToken(TOKEN_TYPE_EQUALS, "=")));
+			TRY(createToken(TOKEN_TYPE_EQUALS, "=", output));
+			return OK;
 		case '.':
-			return ok(TRY(heapToken(TOKEN_TYPE_DOT, ".")));
+			TRY(createToken(TOKEN_TYPE_DOT, ".", output));
+			return OK;
 		case '(':
-			return ok(TRY(heapToken(TOKEN_TYPE_LEFT_PARENTHESIS, "(")));
+			TRY(createToken(TOKEN_TYPE_LEFT_PARENTHESIS, "(", output));
+			return OK;
 		case '{':
-			return ok(TRY(heapToken(TOKEN_TYPE_LEFT_BRACE, "{")));
+			TRY(createToken(TOKEN_TYPE_LEFT_BRACE, "{", output));
+			return OK;
 		case '}':
-			return ok(TRY(heapToken(TOKEN_TYPE_RIGHT_BRACE, "}")));
+			TRY(createToken(TOKEN_TYPE_RIGHT_BRACE, "}", output));
+			return OK;
 		case ')':
-			return ok(TRY(heapToken(TOKEN_TYPE_RIGHT_PARENTHESIS, ")")));
+			TRY(createToken(TOKEN_TYPE_RIGHT_PARENTHESIS, ")", output));
+			return OK;
 		case ';':
-			return ok(TRY(heapToken(TOKEN_TYPE_SEMICOLON, ";")));
+			TRY(createToken(TOKEN_TYPE_SEMICOLON, ";", output));
+			return OK;
 		case ':':
-			return ok(TRY(heapToken(TOKEN_TYPE_COLON, ":")));
+			TRY(createToken(TOKEN_TYPE_COLON, ":", output));
+			return OK;
 		case ' ':
-			return ok(TRY(heapToken(TOKEN_TYPE_WHITESPACE, " ")));
+			TRY(createToken(TOKEN_TYPE_WHITESPACE, " ", output));
+			return OK;
 		case '\n':
-			return ok(TRY(heapToken(TOKEN_TYPE_WHITESPACE, "\n")));
+			TRY(createToken(TOKEN_TYPE_WHITESPACE, "\n", output));
+			return OK;
 		case '\r':
-			return ok(TRY(heapToken(TOKEN_TYPE_WHITESPACE, "\r")));
+			TRY(createToken(TOKEN_TYPE_WHITESPACE, "\r", output));
+			return OK;
 		case '\t':
-			return ok(TRY(heapToken(TOKEN_TYPE_WHITESPACE, "\t")));
+			TRY(createToken(TOKEN_TYPE_WHITESPACE, "\t", output));
+			return OK;
 	}
 
 	// Identifier
 	if ((*current >= 'A' && *current <= 'Z') ||
 		(*current >= 'a' && *current <= 'z') || *current == '_') {
-		List identifierCharacters = EMPTY_LIST();
+		CharList identifierCharacters;
+		TRY(emptyCharList(&identifierCharacters));
 		while ((*current >= 'A' && *current <= 'Z') ||
 			   (*current >= 'a' && *current <= 'z') ||
 			   (*current >= '0' && *current <= '9') ||
 			   *current == '_') {
-			TRY(appendToList(&identifierCharacters, current));
+			TRY(appendToCharList(&identifierCharacters, *current));
 			current++;
 		}
-
-		char* identifier = NONNULL(malloc(sizeof(char) * identifierCharacters.size + 1));
-		for (int index = 0; index < identifierCharacters.size; index++) {
-			identifier[index] = *(char*) identifierCharacters.data[index];
-		};
-		free(identifierCharacters.data);
-		identifier[identifierCharacters.size] = '\0';
+		TRY(appendToCharList(&identifierCharacters, '\0'));
+		String identifier = identifierCharacters.data;
 
 		// Keywords
 		TokenType type = TOKEN_TYPE_IDENTIFIER;
@@ -125,9 +149,8 @@ Result getNextToken(char* sourceCode) {
 			type = TOKEN_TYPE_KEYWORD_ELSE;
 		}
 
-		Token* token = TRY(heapToken(type, identifier));
-		free(identifier);
-		return ok(token);
+		TRY_LET(Token, token, createToken, type, identifier);
+		RETURN_OK(output, token);
 	}
 
 	// String
@@ -135,65 +158,74 @@ Result getNextToken(char* sourceCode) {
 		current++;
 
 		char quote = '"';
-		List stringCharacters = EMPTY_LIST();
-		TRY(appendToList(&stringCharacters, &quote));
+		CharList stringCharacters;
+		TRY(emptyCharList(&stringCharacters));
 
+		TRY(appendToCharList(&stringCharacters, quote));
 		while (*current != '"') {
-			TRY(appendToList(&stringCharacters, current));
+			TRY(appendToCharList(&stringCharacters, *current));
 			current++;
 		}
+		TRY(appendToCharList(&stringCharacters, quote));
+		TRY(appendToCharList(&stringCharacters, '\0'));
 
-		TRY(appendToList(&stringCharacters, &quote));
-
-		char* string = NONNULL(malloc(sizeof(char) * (stringCharacters.size - 1)));
-
-		for (int index = 0; index < stringCharacters.size; index++) {
-			string[index] = *(char*) stringCharacters.data[index];
-		};
-		free(stringCharacters.data);
-		string[stringCharacters.size] = '\0';
-
-		Token* token = TRY(heapToken(TOKEN_TYPE_STRING, string));
-		free(string);
-		return ok(token);
+		String string = stringCharacters.data;
+		TRY_LET(Token, token, createToken, TOKEN_TYPE_STRING, string);
+		RETURN_OK(output, token);
 	}
 
 	// Unrecognized
-	return ERROR(ERROR_UNRECOGNIZED_TOKEN, "Unrecognized token: ", sourceCode);
+	return ERROR_UNRECOGNIZED_TOKEN;
 }
 
 /**
- * Tokenizes the given source code into a list of tokens.
+ * Tokenizes the given string of Klein source code into a list of tokens.
+ * This is the first step of interpreting Klein code.
  *
  * # Parameters
  *
- * - `sourceCode` - The source code to tokenize. The given string will be unmodified.
+ * - `sourceCode` - The original, Klein source code. It may contain
+ *   syntax and semantic errors and this function will still return `OK`
+ *   as long as each individual token in the code is a valid Klein token.
+ *   It mustn't be `NULL`.
  *
- * # Returns
+ * - `output` - Where to store the resulting `TokenList`. It must point to
+ *   some memory (be it stack or heap) that already has enough space to hold
+ *   a `TokenList`; i.e. it could be the address of stack token or the result of
+ *   `malloc(sizeof(TokenList))`, but it can't be `NULL`, or an error will be returned.
+ *   The outputted tokens have copied strings from the original source code (because
+ *   they need to be null-terminated and the original source code is contiguous),
+ *   so it's not dependent on `sourceCode` being valid; i.e., if the string stored at
+ *   `sourceCode` is freed, `output` will still be valid.
  *
- * Returns a `Result` that contains a `List` of `Tokens` if the tokenization
- * was successful, or an error `Result` if an unknown token was encountered.
+ * # Errors
+ *
+ * If memory for the token list fails to allocate, an error is returned.
+ * If the source code contains unrecognized tokens, an error is returned.
+ * If the given `sourceCode` or `output` is `NULL`, an error is returned.
  */
-Result tokenize(char* sourceCode) {
-	List* tokens = TRY(emptyHeapList());
+Result tokenize(String sourceCode, TokenList* output) {
+	ASSERT_NONNULL(sourceCode);
+	ASSERT_NONNULL(output);
 
-	int cursor = 0;
-	int sourceLength = strlen(sourceCode);
+	TRY(emptyTokenList(output));
+	size_t cursor = 0;
+	size_t sourceLength = strlen(sourceCode);
 
 	while (cursor != sourceLength) {
-		Token* token = TRY(getNextToken(sourceCode + cursor));
-		int length = strlen(token->value);
-		if (token->type != TOKEN_TYPE_WHITESPACE) {
-			if (token->type == TOKEN_TYPE_STRING) {
-				token->value[length - 1] = '\0';
-				token->value++;
+		TRY_LET(Token, token, getNextToken, sourceCode + cursor);
+		size_t length = strlen(token.value);
+		if (token.type != TOKEN_TYPE_WHITESPACE) {
+			if (token.type == TOKEN_TYPE_STRING) {
+				token.value[length - 1] = '\0';
+				token.value++;
 			}
-			TRY(appendToList(tokens, token));
-		} else {
-			freeToken(token);
+			TRY(appendToTokenList(output, token));
 		}
 		cursor += length;
 	}
 
-	return ok(tokens);
+	return OK;
 }
+
+IMPLEMENT_LIST(Token)

@@ -1,98 +1,41 @@
 #include "../include/result.h"
-#include "../include/string.h"
 #include <stdarg.h>
 #include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
-/**
- * Unwraps the given result into its inner data value.
- *
- * # Returns
- *
- * The data stored in the result.
- *
- * # Safety
- *
- * If the given `Result` is an error value, the behavior of this function is
- * undefined.
- */
-void* unwrapUnsafe(Result result) {
-	return result.data.data;
-}
-
-/**
- * Creates a success `Result` with the given data.
- *
- * # Parameters
- *
- * - `data` - The data inside the success result.
- *
- * # Returns
- *
- * The success `Result`. The result is valid for the lifetime of the given
- * data pointer.
- */
-Result ok(void* data) {
-	return (Result) {
-		.success = true,
-		.data = (ResultData) {
-			.data = data,
-		},
-	};
-}
-
-/**
- * Creates an error `Result` with the given error message.
- *
- * **The last argument passed must be `NULL`, due to a quirk with varargs.**
- *
- * # Parameters
- *
- * - `message` - The error message.
- *
- * # Returns
- *
- * The error `Result`.
- */
-Result error(char* message, ...) {
-	// Set up varargs
-	va_list args;
-	va_start(args, message);
-
-	// Get total length
-	char* string = message;
-	int totalLength = 0;
-	while (string != NULL) {
-		totalLength += strlen(string);
-		string = va_arg(args, char*);
+char* errorMessage(Result error) {
+	switch (error) {
+		case OK: {
+			return "Success.";
+		}
+		case ERROR_NULL: {
+			return "A value that mustn't be null was null.";
+		}
+		case ERROR_PRINT: {
+			return "An system error occurred while attempting to print to stdout.";
+		}
+		case ERROR_DUPLICATE_VARIABLE: {
+			return "Variable defined twice.";
+		}
+		case ERROR_INTERNAL: {
+			return "An internal error has occurred.";
+		}
+		case ERROR_UNEXPECTED_TOKEN: {
+			return "Unexpected token.";
+		}
+		case ERROR_INVALID_ARGUMENTS: {
+			return "Invalid arguments to function call.";
+		}
+		case ERROR_REFERENCE_NONEXISTENT_VARIABLE: {
+			return "Attempted to reference a variable that doesn't exist.";
+		}
+		case ERROR_CALL_NON_FUNCTION: {
+			return "Attempted to call a value that's not a function.";
+		}
+		case ERROR_INVALID_OPERAND: {
+			return "Invalid operands provided to operation.";
+		}
+		case ERROR_UNRECOGNIZED_TOKEN: {
+			return "Unrecognized token.";
+		}
 	}
-
-	// Allocate result
-	char* result = malloc(totalLength + 1);
-
-	// Restart varargs
-	va_end(args);
-	va_start(args, message);
-
-	// Build string
-	string = message;
-	result[0] = '\0';
-	while (string != NULL) {
-		strncat(result, string, strlen(string));
-		string = va_arg(args, char*);
-	}
-	result[totalLength] = '\0';
-
-	// Clean up varargs
-	va_end(args);
-
-	// Return
-	return (Result) {
-		.success = false,
-		.data = (ResultData) {
-			.errorMessage = result,
-		},
-	};
 }

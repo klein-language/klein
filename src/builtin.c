@@ -1,72 +1,127 @@
 #include "../include/builtin.h"
 #include "../include/context.h"
-#include "../include/list.h"
 #include "../include/parser.h"
 #include "../include/result.h"
+#include "../include/sugar.h"
 #include <string.h>
 
-Result print(Context* context, List arguments) {
-	if (arguments.size != 1) {
-		return ERROR(ERROR_INVALID_ARGUMENTS, "Incorrect number of arguments passed to print");
+/**
+ * The built-in `print` function. This converts it's argument into a string and prints it,
+ * ending with a trailing newline, and returning `null`.
+ *
+ * # Parameters
+ *
+ * - `context` - Data about the current part of the program being compiled. In this case,
+ *   the current scope (stored on the `context` is used to resolve an identifier in the case
+ *   that the given argument is an identifier.
+ *
+ * - `arguments` - The arguments passed to `print`, as an expression list.
+ *
+ * - `output` - Where to place the return value from `print`. In the case of `print`, nothing
+ *   is returned, so this is unused. However, to conform to the `BuiltinFunction` function pointer
+ *   type and called as a generic return value from `getBuiltin()`, the parameter is included.
+ *
+ * # Errors
+ *
+ * If the given argument list doesnt contain exactly 1 argument, an error is returned.
+ * If the given argument is an identifier that can't be resolved, an error is returned.
+ * If the given argument isn't a string, an error is returned.
+ * If the underlying `printf` call fails (for any reason), an error is returned.
+ */
+PRIVATE Result print(Context* context, ExpressionList* arguments, Expression* output) {
+	DEBUG("Calling builtin function print()\n");
+	SUPPRESS_UNUSED(output);
+
+	if (arguments->size != 1) {
+		return ERROR_INVALID_ARGUMENTS;
 	}
 
-	Expression* expression = (Expression*) arguments.data[0];
+	Expression* expression = arguments->data;
 	if (expression->type == EXPRESSION_IDENTIFIER) {
-		expression = TRY(getVariable(*context->scope, expression->data.identifier));
+		TRY(getVariable(*context->scope, expression->data.identifier, &expression));
 	}
 
-	if (expression->type != EXPRESSION_STRING) {
-		return ERROR(ERROR_INVALID_ARGUMENTS, "Argument to print isn't a string");
+	String* stringValue;
+	TRY(getString(*expression, &stringValue));
+
+	if (puts(*stringValue) < 0) {
+		return ERROR_PRINT;
 	}
 
-	printf("%s\n", expression->data.string);
-
-	return ok(NULL);
+	return OK;
 }
 
-Result input(Context* context, List arguments) {
-	if (arguments.size != 0) {
-		return ERROR(ERROR_INVALID_ARGUMENTS, "Incorrect number of arguments passed to input");
+/**
+ * The built-in `input` function. This reads a line from `stdin` and returns it as a string
+ * expression.
+ *
+ * # Parameters
+ *
+ * - `context` - Data about the current part of the program being compiled. `input` doesn't
+ *   actually need this parameter, so it's unused; It's included to conform to the `BuiltinFunction`
+ *   function pointer type.
+ *
+ * - `arguments` - The arguments passed to `print`, as an expression list.
+ *
+ * - `output` - Where to place the return value from `input`. It will be a string expression,
+ *   such as the return value from `stringExpression()` from `sugar.h`. The underlying
+ *   C string is allocated on the heap and valid until manually freed.
+ *
+ * # Errors
+ *
+ * If the given argument list isn't empty, an error is returned.
+ * If the underlying `getline` call fails (for any reason), an error is returned.
+ * If creating the string expression fails for any reason, an error is returned.
+ */
+PRIVATE Result input(Context* context, ExpressionList* arguments, Expression* output) {
+	SUPPRESS_UNUSED(context);
+
+	if (arguments->size != 0) {
+		return ERROR_INVALID_ARGUMENTS;
 	}
 
-	char* buffer;
+	// Read from stdin
+	String buffer;
 	size_t length = 0;
 	getline(&buffer, &length, stdin);
 
-	return ok(HEAP(((Expression) {.type = EXPRESSION_STRING, .data = (ExpressionData) {.string = buffer}}), Expression));
+	Expression result;
+	TRY(stringExpression(buffer, &result));
+
+	RETURN_OK(output, result);
 }
 
-Result stringLength(Context* context, List arguments) {
-	if (arguments.size != 1) {
-		return ERROR(ERROR_INVALID_ARGUMENTS, "Incorrect number of arguments passed to String.length");
+PRIVATE Result stringLength(Context* context, ExpressionList* arguments, Expression* output) {
+	if (arguments->size != 1) {
+		return ERROR_INVALID_ARGUMENTS;
 	}
 
-	Expression* expression = (Expression*) arguments.data[0];
+	Expression* expression = arguments->data;
 	if (expression->type == EXPRESSION_IDENTIFIER) {
-		expression = TRY(getVariable(*context->scope, expression->data.identifier));
+		TRY(getVariable(*context->scope, expression->data.identifier, &expression));
 	}
 
-	if (expression->type != EXPRESSION_OBJECT) {
-		return ERROR(ERROR_INVALID_ARGUMENTS, "Argument to get length of isn't an object");
-	}
+	String* stringValue;
+	TRY(getString(*expression, &stringValue));
 
-	char* string = TRY(getObjectInternal(expression->data.object, "string_value"));
+	Expression number;
+	TRY(numberExpression((double) strlen(*stringValue), &number));
 
-	return ok(HEAP(((Expression) {.type = EXPRESSION_NUMBER, .data = (ExpressionData) {.number = strlen(string)}}), Expression));
+	RETURN_OK(output, number);
 }
 
-Result getBuiltin(char* name) {
+Result getBuiltin(String name, BuiltinFunction* output) {
 	if (strcmp(name, "print") == 0) {
-		return ok(&print);
+		RETURN_OK(output, &print);
 	}
 
 	if (strcmp(name, "input") == 0) {
-		return ok(&input);
+		RETURN_OK(output, &input);
 	}
 
 	if (strcmp(name, "String.length") == 0) {
-		return ok(&stringLength);
+		RETURN_OK(output, &stringLength);
 	}
 
-	return ERROR(ERROR_INTERNAL, "Unknown builtin: ", name);
+	return ERROR_INTERNAL;
 }

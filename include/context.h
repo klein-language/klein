@@ -5,15 +5,20 @@
 #include "parser.h"
 
 typedef struct Scope Scope;
+
+DEFINE_LIST(Scope)
+
 struct Scope {
 	Scope* parent;
-	List children;
-	List variables;
+	ScopeList children;
+	DeclarationList variables;
 };
 
-typedef struct {
+typedef struct Context Context;
+struct Context {
 	Scope* scope;
-} Context;
+	Scope globalScope;
+};
 
 /**
  * Creates a new context allocated on the heap, wrapped in a
@@ -28,9 +33,7 @@ typedef struct {
  *
  * If memory fails to allocate, an error is returned.
  */
-Result newContext();
-
-void freeContext(Context* context);
+Result newContext(Context* output);
 
 /**
  * Declares a new variable in the given scope with the given name and
@@ -80,9 +83,11 @@ Result declareNewVariable(Scope* scope, Declaration declaration);
  * If no variable exists with the given name in the given scope,
  * an error is returned.
  */
-Result getVariable(Scope scope, char* name);
+Result getVariable(Scope scope, char* name, Expression** output);
 
 Result enterNewScope(Context* context);
 Result exitScope(Context* context);
+
+void freeContext(Context context);
 
 #endif
