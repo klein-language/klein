@@ -1,3 +1,2 @@
-print("Enter your name:");
-let name = input();
+let name = input("Enter your name: ");
 print("Your name is: " + name);

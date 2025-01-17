@@ -77,15 +77,15 @@ PRIVATE Result getNextToken(String sourceCode, Token* output) {
 			return createToken(TOKEN_TYPE_PLUS, "+", output);
 		case '.':
 			return createToken(TOKEN_TYPE_DOT, ".", output);
+		case ',':
+			return createToken(TOKEN_TYPE_COMMA, ",", output);
 		case '(':
 			TRY(createToken(TOKEN_TYPE_LEFT_PARENTHESIS, "(", output));
 			return OK;
 		case '{':
-			TRY(createToken(TOKEN_TYPE_LEFT_BRACE, "{", output));
-			return OK;
+			return createToken(TOKEN_TYPE_LEFT_BRACE, "{", output);
 		case '}':
-			TRY(createToken(TOKEN_TYPE_RIGHT_BRACE, "}", output));
-			return OK;
+			return createToken(TOKEN_TYPE_RIGHT_BRACE, "}", output);
 		case ')':
 			TRY(createToken(TOKEN_TYPE_RIGHT_PARENTHESIS, ")", output));
 			return OK;

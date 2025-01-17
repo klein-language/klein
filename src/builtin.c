@@ -32,8 +32,31 @@ PRIVATE Result print(Context* context, ExpressionList* arguments, Expression* ou
 	DEBUG("Calling builtin function print()\n");
 	SUPPRESS_UNUSED(output);
 
-	if (arguments->size != 1) {
+	if (arguments->size < 1) {
 		return ERROR_INVALID_ARGUMENTS;
+	}
+
+	Object* options;
+
+	// Default options
+	Object defaultOptions;
+	FieldList fields;
+	TRY(emptyFieldList(&fields));
+	Expression trueExpression = (Expression) {
+		.type = EXPRESSION_BOOLEAN,
+		.data = (ExpressionData) {
+			.boolean = true,
+		},
+	};
+	TRY(appendToFieldList(&fields, (Field) {.name = "newline", .value = trueExpression}));
+	defaultOptions = (Object) {
+		.fields = fields,
+	};
+
+	if (arguments->size == 2) {
+		options = arguments->data[1].data.object;
+	} else {
+		options = &defaultOptions;
 	}
 
 	Expression* expression = arguments->data;
@@ -43,7 +66,13 @@ PRIVATE Result print(Context* context, ExpressionList* arguments, Expression* ou
 
 	TRY_LET(String*, stringValue, getString, *expression);
 
-	if (puts(*stringValue) < 0) {
+	String newline = "\n";
+	TRY_LET(Expression*, useNewline, getObjectField, *options, "newline");
+	if (!useNewline->data.boolean) {
+		newline = "";
+	}
+
+	if (printf("%s%s", *stringValue, newline) < 0) {
 		return ERROR_PRINT;
 	}
 
@@ -75,9 +104,19 @@ PRIVATE Result print(Context* context, ExpressionList* arguments, Expression* ou
 PRIVATE Result input(Context* context, ExpressionList* arguments, Expression* output) {
 	SUPPRESS_UNUSED(context);
 
-	if (arguments->size != 0) {
+	if (arguments->size > 1) {
 		return ERROR_INVALID_ARGUMENTS;
 	}
+
+	String defaultPrompt = "";
+	String* prompt = &defaultPrompt;
+	if (arguments->size == 1) {
+		TRY(getString(arguments->data[0], &prompt));
+	};
+
+	// Print prompt
+	printf("%s", *prompt);
+	fflush(stdout);
 
 	// Read from stdin
 	String buffer = NULL;
@@ -85,6 +124,7 @@ PRIVATE Result input(Context* context, ExpressionList* arguments, Expression* ou
 	if (getline(&buffer, &length, stdin) < 0) {
 		return ERROR_INTERNAL;
 	}
+	buffer[strlen(buffer) - 1] = '\0';
 
 	Expression result;
 	TRY(stringExpression(buffer, &result));

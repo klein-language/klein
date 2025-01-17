@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+PRIVATE Result parseExpression(Context* context, TokenList* tokens, Expression* output);
+
 Result getObjectInternal(Object object, String name, void** output) {
 	FOR_EACH(InternalField internal, object.internals) {
 		if (strcmp(internal.name, name) == 0) {
@@ -188,6 +190,42 @@ PRIVATE Result parseBlock(Context* context, TokenList* tokens, Block* output) {
 	RETURN_OK(output, block);
 }
 
+Result parseObjectLiteral(Context* context, TokenList* tokens, Expression* output) {
+	TRY_LET(String, next, popToken, tokens, TOKEN_TYPE_LEFT_BRACE);
+
+	// Fields
+	FieldList fields;
+	TRY(emptyFieldList(&fields));
+	while (!nextTokenIs(tokens, TOKEN_TYPE_RIGHT_BRACE)) {
+		TRY_LET(String, name, popToken, tokens, TOKEN_TYPE_IDENTIFIER);
+		TRY(popToken(tokens, TOKEN_TYPE_EQUALS, &next));
+		TRY_LET(Expression, value, parseExpression, context, tokens);
+		TRY(appendToFieldList(&fields, (Field) {.name = name, .value = value}));
+		if (!nextTokenIs(tokens, TOKEN_TYPE_RIGHT_BRACE)) {
+			TRY(popToken(tokens, TOKEN_TYPE_COMMA, &next));
+		}
+	}
+
+	TRY(popToken(tokens, TOKEN_TYPE_RIGHT_BRACE, &next));
+
+	InternalFieldList internals;
+	TRY(emptyInternalFieldList(&internals));
+
+	Object* object = malloc(sizeof(Object));
+	ASSERT_NONNULL(object);
+	*object = (Object) {
+		.fields = fields,
+		.internals = internals,
+	};
+	Expression expression = (Expression) {
+		.type = EXPRESSION_OBJECT,
+		.data = (ExpressionData) {
+			.object = object,
+		},
+	};
+	RETURN_OK(output, expression);
+}
+
 PRIVATE Result parseLiteral(Context* context, TokenList* tokens, Expression* output) {
 	DEBUG("Parsing literal\n");
 	TRY_LET(TokenType, nextTokenType, peekTokenType, tokens);
@@ -210,6 +248,10 @@ PRIVATE Result parseLiteral(Context* context, TokenList* tokens, Expression* out
 				},
 			};
 			RETURN_OK(output, expression);
+		}
+
+		case TOKEN_TYPE_LEFT_BRACE: {
+			return parseObjectLiteral(context, tokens, output);
 		}
 
 		// Number

@@ -87,4 +87,11 @@ Result numberExpression(double value, Expression* output);
  */
 Result getNumber(Expression expression, double** output);
 
+#define FIELD(name, value) \
+	(Field) { .name = name, .value = value }
+
+#define OBJECT(...) \
+	do {            \
+	} while (0)
+
 #endif
