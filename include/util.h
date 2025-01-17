@@ -26,7 +26,7 @@ typedef char* String;
 #ifdef DEBUG_ON
 #define DEBUG(...) fprintf(stderr, __VA_ARGS__);
 #else
-#define DEBUG(message)
+#define DEBUG(...)
 #endif
 
 void debug(String message);

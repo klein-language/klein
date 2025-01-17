@@ -41,8 +41,7 @@ PRIVATE Result print(Context* context, ExpressionList* arguments, Expression* ou
 		TRY(getVariable(*context->scope, expression->data.identifier, &expression));
 	}
 
-	String* stringValue;
-	TRY(getString(*expression, &stringValue));
+	TRY_LET(String*, stringValue, getString, *expression);
 
 	if (puts(*stringValue) < 0) {
 		return ERROR_PRINT;
@@ -81,9 +80,11 @@ PRIVATE Result input(Context* context, ExpressionList* arguments, Expression* ou
 	}
 
 	// Read from stdin
-	String buffer;
+	String buffer = NULL;
 	size_t length = 0;
-	getline(&buffer, &length, stdin);
+	if (getline(&buffer, &length, stdin) < 0) {
+		return ERROR_INTERNAL;
+	}
 
 	Expression result;
 	TRY(stringExpression(buffer, &result));

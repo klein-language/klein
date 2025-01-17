@@ -56,6 +56,9 @@ clean:
 test: build
 	./$(TARGET) tests/test.klein
 
+debug: CFLAGS += -DDEBUG_ON
+debug: test
+
 # Install on the system
 install: build
 	sudo mkdir -p $(LOCATION)

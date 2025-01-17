@@ -88,6 +88,11 @@ Result getString(Expression expression, String** output) {
 	return getObjectInternal(*expression.data.object, "string_value", (void**) output);
 }
 
+bool isString(Expression expression) {
+	String* output;
+	return getString(expression, &output) == OK;
+}
+
 /**
  * Converts a C number (`double`) into a Klein number literal.
  *

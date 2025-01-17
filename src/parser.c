@@ -21,6 +21,7 @@ Result getObjectInternal(Object object, String name, void** output) {
 }
 
 Result getObjectField(Object object, String name, Expression** output) {
+	DEBUG("Getting field \"%s\" on an object\n", name);
 	FOR_EACH_REF(Field * field, object.fields) {
 		if (strcmp(field->name, name) == 0) {
 			RETURN_OK(output, &field->value);
@@ -28,6 +29,7 @@ Result getObjectField(Object object, String name, Expression** output) {
 	}
 	END;
 
+	DEBUG("No field \"%s\" found on object\n", name);
 	return ERROR_INTERNAL;
 }
 
@@ -187,6 +189,7 @@ PRIVATE Result parseBlock(Context* context, TokenList* tokens, Block* output) {
 }
 
 PRIVATE Result parseLiteral(Context* context, TokenList* tokens, Expression* output) {
+	DEBUG("Parsing literal\n");
 	TRY_LET(TokenType, nextTokenType, peekTokenType, tokens);
 	switch (nextTokenType) {
 
@@ -428,6 +431,15 @@ PRIVATE Result binaryOperationOf(String tokenValue, BinaryOperation* output) {
 	if (strcmp(tokenValue, ".") == 0) {
 		RETURN_OK(output, BINARY_OPERATION_DOT);
 	}
+	if (strcmp(tokenValue, "+") == 0) {
+		RETURN_OK(output, BINARY_OPERATION_PLUS);
+	}
+	if (strcmp(tokenValue, "*") == 0) {
+		RETURN_OK(output, BINARY_OPERATION_TIMES);
+	}
+	if (strcmp(tokenValue, "/") == 0) {
+		RETURN_OK(output, BINARY_OPERATION_DIVIDE);
+	}
 	return ERROR_INTERNAL;
 }
 
@@ -437,6 +449,7 @@ PRIVATE Result parseFieldAccess(Context* context, TokenList* tokens, Expression*
 	String next;
 
 	while (nextTokenIs(tokens, TOKEN_TYPE_DOT)) {
+		DEBUG("Parsing field access\n");
 		UNWRAP(popToken(tokens, TOKEN_TYPE_DOT, &next));
 		Expression* right = malloc(sizeof(Expression));
 		TRY(parseLiteral(context, tokens, right));
@@ -465,7 +478,9 @@ PRIVATE Result parseBinaryOperation(Context* context, TokenList* tokens, BinaryO
 
 	String next;
 	while (nextTokenIsOneOf(tokens, operator.tokenTypes, operator.tokenTypeCount)) {
-		TRY(popAnyToken(tokens, &next));
+		UNWRAP(popAnyToken(tokens, &next));
+
+		DEBUG("Parsing binary expression \"%s\"\n", next);
 		BinaryOperation operation;
 		TRY(binaryOperationOf(next, &operation));
 
@@ -481,7 +496,7 @@ PRIVATE Result parseBinaryOperation(Context* context, TokenList* tokens, BinaryO
 				.binary = (BinaryExpression) {
 					.left = newLeft,
 					.right = right,
-					.operation = BINARY_OPERATION_DOT,
+					.operation = operation,
 				},
 			},
 		};
@@ -498,6 +513,8 @@ PRIVATE Result parsePostfixExpression(Context* context, TokenList* tokens, Expre
 	TRY_LET(Expression, expression, parseFieldAccess, context, tokens);
 
 	while (nextTokenIs(tokens, TOKEN_TYPE_LEFT_PARENTHESIS)) {
+		DEBUG("Parsing postfix expression\n");
+
 		TRY_LET(String, next, popToken, tokens, TOKEN_TYPE_LEFT_PARENTHESIS);
 
 		// Parse arguments
@@ -540,6 +557,7 @@ PRIVATE Result parsePostfixExpression(Context* context, TokenList* tokens, Expre
 
 PRIVATE Result parsePrefixExpression(Context* context, TokenList* tokens, Expression* output) {
 	if (nextTokenIs(tokens, TOKEN_TYPE_KEYWORD_NOT)) {
+		DEBUG("Parsing prefix expression\n");
 
 		UNWRAP_LET(String, next, popToken, tokens, TOKEN_TYPE_KEYWORD_NOT);
 		TRY_LET(Expression, inner, parsePrefixExpression, context, tokens);

@@ -73,9 +73,10 @@ PRIVATE Result getNextToken(String sourceCode, Token* output) {
 		case '=':
 			TRY(createToken(TOKEN_TYPE_EQUALS, "=", output));
 			return OK;
+		case '+':
+			return createToken(TOKEN_TYPE_PLUS, "+", output);
 		case '.':
-			TRY(createToken(TOKEN_TYPE_DOT, ".", output));
-			return OK;
+			return createToken(TOKEN_TYPE_DOT, ".", output);
 		case '(':
 			TRY(createToken(TOKEN_TYPE_LEFT_PARENTHESIS, "(", output));
 			return OK;

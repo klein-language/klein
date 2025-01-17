@@ -30,6 +30,8 @@
  * - `evaluate()` from `runner.h`
  */
 PRIVATE Result runFile(String filePath) {
+
+	// Not a .klein file
 	char* dot = strrchr(filePath, '.');
 	if (!dot || strcmp(dot, ".klein")) {
 		fprintf(stderr, "\n%s Attempting to run a file that doesn't end with %s. Continue?: ", STYLE("Warning: ", YELLOW, BOLD), COLOR(".klein", CYAN));

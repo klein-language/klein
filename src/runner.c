@@ -36,6 +36,7 @@ PRIVATE Result evaluateExpression(Context* context, Expression* expression, Expr
 		case EXPRESSION_TYPE:
 		case EXPRESSION_OBJECT:
 		case EXPRESSION_FUNCTION: {
+			DEBUG("Evaluating literal\n");
 			RETURN_OK(output, *expression);
 		}
 
@@ -45,11 +46,12 @@ PRIVATE Result evaluateExpression(Context* context, Expression* expression, Expr
 		}
 
 		case EXPRESSION_BUILTIN_FUNCTION: {
-			return ERROR_INTERNAL;
+			UNREACHABLE;
 		}
 
 		// Unary expressions
 		case EXPRESSION_UNARY: {
+			DEBUG("Evaluating unary expression\n");
 			UnaryExpression* unary = expression->data.unary;
 			TRY(evaluateExpression(context, &unary->expression, &unary->expression));
 			switch (unary->operation.type) {
@@ -57,6 +59,10 @@ PRIVATE Result evaluateExpression(Context* context, Expression* expression, Expr
 				// Function call
 				case UNARY_OPERATION_FUNCTION_CALL: {
 					DEBUG("Evaluating function call\n");
+					FOR_EACH_REF(Expression * argument, unary->operation.data.functionCall) {
+						TRY(evaluateExpression(context, argument, argument));
+					}
+					END;
 					switch (unary->expression.type) {
 
 						// Calling a regular function
@@ -138,14 +144,18 @@ PRIVATE Result evaluateExpression(Context* context, Expression* expression, Expr
 
 		// Binary Expression
 		case EXPRESSION_BINARY: {
+			DEBUG("Evaluating binary expression\n");
+
 			Expression left;
 			TRY(evaluateExpression(context, expression->data.binary.left, &left));
+
 			Expression right;
 			TRY(evaluateExpression(context, expression->data.binary.right, &right));
 
 			switch (expression->data.binary.operation) {
 				// Field access
 				case BINARY_OPERATION_DOT: {
+					DEBUG("Evaluating field access\n");
 					if (right.type != EXPRESSION_IDENTIFIER) {
 						return ERROR_INVALID_OPERAND;
 					}
@@ -164,6 +174,34 @@ PRIVATE Result evaluateExpression(Context* context, Expression* expression, Expr
 					}
 
 					RETURN_OK(output, *fieldValue);
+				}
+
+				case BINARY_OPERATION_PLUS: {
+					Expression* leftPointer = &left;
+					if (leftPointer->type == EXPRESSION_IDENTIFIER) {
+						TRY(getVariable(*context->scope, left.data.identifier, &leftPointer));
+					}
+					Expression* rightPointer = &right;
+					if (rightPointer->type == EXPRESSION_IDENTIFIER) {
+						TRY(getVariable(*context->scope, right.data.identifier, &rightPointer));
+					}
+
+					if (leftPointer->type == EXPRESSION_NUMBER) {
+						TRY_LET(double*, leftNumber, getNumber, *leftPointer);
+						TRY_LET(double*, rightNumber, getNumber, *rightPointer);
+						TRY_LET(Expression, sum, numberExpression, *leftNumber + *rightNumber);
+						RETURN_OK(output, sum);
+					}
+
+					if (isString(*leftPointer)) {
+						TRY_LET(String*, leftString, getString, *leftPointer);
+						TRY_LET(String*, rightString, getString, *rightPointer);
+						String result = malloc(strlen(*leftString) + strlen(*rightString) + 1);
+						strcpy(result, *leftString);
+						strcat(result, *rightString);
+						TRY_LET(Expression, sum, stringExpression, result);
+						RETURN_OK(output, sum);
+					}
 				}
 
 				default: {
