@@ -2,7 +2,6 @@
 #define IO_H
 
 #include "result.h"
-#include "util.h"
 
 Result readFile(String path, String* output);
 String input(void);

@@ -168,3 +168,42 @@ Result getNumber(Expression expression, double** output) {
 
 	return getObjectInternal(*expression.data.object, "number_value", (void**) output);
 }
+
+Result listExpression(ExpressionList values, Expression* output) {
+
+	// Internals
+	InternalFieldList internals;
+	TRY(emptyInternalFieldList(&internals));
+	ExpressionList* heapValues = malloc(sizeof(ExpressionList));
+	*heapValues = values;
+	TRY(appendToInternalFieldList(&internals, (InternalField) {.name = "elements", .value = heapValues}));
+
+	// Fields
+	FieldList fields;
+	TRY(emptyFieldList(&fields));
+
+	// Create object
+	Object* object = malloc(sizeof(Object));
+	ASSERT_NONNULL(object);
+	*object = (Object) {
+		.internals = internals,
+		.fields = fields,
+	};
+
+	Expression expression = (Expression) {
+		.type = EXPRESSION_OBJECT,
+		.data = (ExpressionData) {
+			.object = object,
+		},
+	};
+
+	RETURN_OK(output, expression);
+}
+
+Result getList(Expression expression, ExpressionList** output) {
+	if (expression.type != EXPRESSION_OBJECT) {
+		return ERROR_INTERNAL;
+	}
+
+	return getObjectInternal(*expression.data.object, "elements", (void**) output);
+}

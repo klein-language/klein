@@ -9,10 +9,17 @@
 PRIVATE Result evaluateStatement(Context* context, Statement* statement);
 
 PRIVATE Result evaluateBlock(Context* context, Block* block, Expression* output) {
+	DEBUG_START(context, "Evaluating", "block");
+
+	Scope* previousScope = context->scope;
+	context->scope = block->innerScope;
+
 	FOR_EACHP(Statement statement, block->statements) {
 		TRY(evaluateStatement(context, &statement));
 	}
 	END;
+
+	context->scope = previousScope;
 
 	Expression expression = (Expression) {
 		.type = EXPRESSION_BLOCK,
@@ -21,11 +28,12 @@ PRIVATE Result evaluateBlock(Context* context, Block* block, Expression* output)
 		},
 	};
 
+	DEBUG_END(context, "evaluating block");
 	RETURN_OK(Output, expression);
 }
 
 PRIVATE Result evaluateExpression(Context* context, Expression* expression, Expression* output) {
-	DEBUG("Evaluating expression\n");
+	DEBUG_START(context, "Evaluating", "expression");
 
 	switch (expression->type) {
 
@@ -36,7 +44,9 @@ PRIVATE Result evaluateExpression(Context* context, Expression* expression, Expr
 		case EXPRESSION_TYPE:
 		case EXPRESSION_OBJECT:
 		case EXPRESSION_FUNCTION: {
-			DEBUG("Evaluating literal\n");
+			DEBUG_START(context, "Evaluating", "literal");
+			DEBUG_END(context, "evaluating", "literal");
+			DEBUG_END(context, "evaluating", "expression");
 			RETURN_OK(output, *expression);
 		}
 
@@ -49,16 +59,49 @@ PRIVATE Result evaluateExpression(Context* context, Expression* expression, Expr
 			UNREACHABLE;
 		}
 
+		// For loop
+		case EXPRESSION_FOR_LOOP: {
+			DEBUG_START(context, "Evaluating", "for loop");
+
+			TRY(evaluateExpression(context, &expression->data.forLoop->list, &expression->data.forLoop->list));
+			if (expression->data.forLoop->list.type == EXPRESSION_IDENTIFIER) {
+				Expression* value;
+				TRY(getVariable(*context->scope, expression->data.forLoop->list.data.identifier, &value));
+				expression->data.forLoop->list = *value;
+			}
+
+			TRY_LET(ExpressionList*, list, getList, expression->data.forLoop->list);
+			FOR_EACHP(Expression value, list) {
+				Declaration declaration = (Declaration) {
+					.name = expression->data.forLoop->binding,
+					.value = value,
+				};
+				setVariable(expression->data.forLoop->body.innerScope, declaration);
+				TRY_LET(Expression, blockValue, evaluateBlock, context, &expression->data.forLoop->body);
+			}
+			END;
+
+			Expression null = (Expression) {
+				.type = EXPRESSION_IDENTIFIER,
+				.data = (ExpressionData) {
+					.identifier = "null",
+				},
+			};
+			DEBUG_END(context, "evaluating for loop");
+			DEBUG_END(context, "evaluating expression");
+			RETURN_OK(output, null);
+		}
+
 		// Unary expressions
 		case EXPRESSION_UNARY: {
-			DEBUG("Evaluating unary expression\n");
+			DEBUG_START(context, "Evaluating", "unary expression");
 			UnaryExpression* unary = expression->data.unary;
 			TRY(evaluateExpression(context, &unary->expression, &unary->expression));
 			switch (unary->operation.type) {
 
 				// Function call
 				case UNARY_OPERATION_FUNCTION_CALL: {
-					DEBUG("Evaluating function call\n");
+					DEBUG_START(context, "Evaluating", "function call");
 					FOR_EACH_REF(Expression * argument, unary->operation.data.functionCall) {
 						TRY(evaluateExpression(context, argument, argument));
 					}
@@ -67,17 +110,20 @@ PRIVATE Result evaluateExpression(Context* context, Expression* expression, Expr
 
 						// Calling a regular function
 						case EXPRESSION_FUNCTION: {
+							DEBUG_END(context, "evaluating function call");
+							DEBUG_END(context, "evaluating unary expression");
+							DEBUG_END(context, "evaluating expression");
 							return evaluateBlock(context, &unary->expression.data.function.body, output);
 						}
 
 						// Calling an identifier such as `name()`
 						case EXPRESSION_IDENTIFIER: {
-							DEBUG("Evaluating identifier function call\n");
+							DEBUG_START(context, "Evaluating", "identifier function call");
 							String identifier = unary->expression.data.identifier;
 
 							// Calling `builtin()`
 							if (strcmp(identifier, "builtin") == 0) {
-								DEBUG("Evaluating call to builtin()\n");
+								DEBUG_START(context, "Evaluating", "call to builtin()");
 
 								String* builtinName;
 								TRY(getString(unary->operation.data.functionCall.data[0], &builtinName));
@@ -94,6 +140,11 @@ PRIVATE Result evaluateExpression(Context* context, Expression* expression, Expr
 									},
 								};
 
+								DEBUG_END(context, "evaluating call to builtin()");
+								DEBUG_END(context, "evaluating identifier function call");
+								DEBUG_END(context, "evaluating function call");
+								DEBUG_END(context, "evaluating unary expression");
+								DEBUG_END(context, "evaluating expression");
 								RETURN_OK(output, functionExpression);
 							}
 
@@ -102,6 +153,10 @@ PRIVATE Result evaluateExpression(Context* context, Expression* expression, Expr
 
 							// Calling a  function
 							if (value->type == EXPRESSION_FUNCTION) {
+								DEBUG_END(context, "evaluating identifier function call");
+								DEBUG_END(context, "evaluating function call");
+								DEBUG_END(context, "evaluating unary expression");
+								DEBUG_END(context, "evaluating expression");
 								return evaluateBlock(context, &value->data.function.body, output);
 							}
 
@@ -110,6 +165,10 @@ PRIVATE Result evaluateExpression(Context* context, Expression* expression, Expr
 								if (value->data.builtinFunction.thisObject != NULL) {
 									TRY(prependToExpressionList(&unary->operation.data.functionCall, *unary->expression.data.builtinFunction.thisObject));
 								}
+								DEBUG_END(context, "evaluating identifier function call");
+								DEBUG_END(context, "evaluating function call");
+								DEBUG_END(context, "evaluating unary expression");
+								DEBUG_END(context, "evaluating expression");
 								return value->data.builtinFunction.function(context, &unary->operation.data.functionCall, output);
 							}
 
@@ -119,6 +178,9 @@ PRIVATE Result evaluateExpression(Context* context, Expression* expression, Expr
 
 						// Calling something else (like a number literal like `3()`)
 						default: {
+							DEBUG_END(context, "evaluating function call");
+							DEBUG_END(context, "evaluating unary expression");
+							DEBUG_END(context, "evaluating expression");
 							return ERROR_CALL_NON_FUNCTION;
 						}
 					}
@@ -144,7 +206,7 @@ PRIVATE Result evaluateExpression(Context* context, Expression* expression, Expr
 
 		// Binary Expression
 		case EXPRESSION_BINARY: {
-			DEBUG("Evaluating binary expression\n");
+			DEBUG_START(context, "Evaluating", "binary expression");
 
 			Expression left;
 			TRY(evaluateExpression(context, expression->data.binary.left, &left));
@@ -155,7 +217,7 @@ PRIVATE Result evaluateExpression(Context* context, Expression* expression, Expr
 			switch (expression->data.binary.operation) {
 				// Field access
 				case BINARY_OPERATION_DOT: {
-					DEBUG("Evaluating field access\n");
+					DEBUG_START(context, "Evaluating", "field access");
 					if (right.type != EXPRESSION_IDENTIFIER) {
 						return ERROR_INVALID_OPERAND;
 					}
@@ -215,17 +277,19 @@ PRIVATE Result evaluateExpression(Context* context, Expression* expression, Expr
 }
 
 PRIVATE Result evaluateStatement(Context* context, Statement* statement) {
-	DEBUG("Evaluating statement\n");
+	DEBUG_START(context, "Evaluating", "statement");
 	switch (statement->type) {
 		case STATEMENT_EXPRESSION: {
 			Expression output;
 			TRY(evaluateExpression(context, &statement->data.expression, &output));
+			DEBUG_END(context, "evaluating statement");
 			return OK;
 		}
 
 		case STATEMENT_DECLARATION: {
 			TRY(evaluateExpression(context, &statement->data.declaration.value, &statement->data.declaration.value));
 			TRY(declareNewVariable(context->scope, statement->data.declaration));
+			DEBUG_END(context, "evaluating statement");
 			return OK;
 		}
 	}

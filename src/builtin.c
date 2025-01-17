@@ -29,7 +29,7 @@
  * If the underlying `printf` call fails (for any reason), an error is returned.
  */
 PRIVATE Result print(Context* context, ExpressionList* arguments, Expression* output) {
-	DEBUG("Calling builtin function print()\n");
+	DEBUG_START(context, "Evaluating", "builtin function call print()");
 	SUPPRESS_UNUSED(output);
 
 	if (arguments->size < 1) {

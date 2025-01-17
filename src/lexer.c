@@ -84,6 +84,10 @@ PRIVATE Result getNextToken(String sourceCode, Token* output) {
 			return OK;
 		case '{':
 			return createToken(TOKEN_TYPE_LEFT_BRACE, "{", output);
+		case '[':
+			return createToken(TOKEN_TYPE_LEFT_BRACKET, "[", output);
+		case ']':
+			return createToken(TOKEN_TYPE_RIGHT_BRACKET, "]", output);
 		case '}':
 			return createToken(TOKEN_TYPE_RIGHT_BRACE, "}", output);
 		case ')':

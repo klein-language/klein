@@ -23,10 +23,43 @@ typedef char* String;
  */
 #define PRIVATE static
 
+#ifndef STYLE
+#define STYLE(text, color, style) "\033[" style ";3" color "m" text "\033[0m"
+#define COLOR(text, color) STYLE(text, color, NORMAL)
+
+#define RED "1"
+#define GREEN "2"
+#define YELLOW "3"
+#define BLUE "4"
+#define PURPLE "5"
+#define CYAN "6"
+#define WHITE "7"
+
+#define NORMAL "0"
+#define BOLD "1"
+#define UNDERLINE "4"
+#endif
+
 #ifdef DEBUG_ON
-#define DEBUG(...) fprintf(stderr, __VA_ARGS__);
+#define DEBUG_START(context, action, ...)                           \
+	for (int indent = 0; indent < context->debugIndent; indent++) { \
+		fprintf(stderr, "%s ", COLOR("│", WHITE));                  \
+	}                                                               \
+	fprintf(stderr, "%s ", STYLE(action, GREEN, BOLD));             \
+	fprintf(stderr, __VA_ARGS__);                                   \
+	fprintf(stderr, "\n");                                          \
+	context->debugIndent++
+#define DEBUG_END(context, ...)                                     \
+	context->debugIndent--;                                         \
+	for (int indent = 0; indent < context->debugIndent; indent++) { \
+		fprintf(stderr, "%s ", COLOR("│", WHITE));                  \
+	}                                                               \
+	fprintf(stderr, "%s ", STYLE("Done", GREEN, BOLD));             \
+	fprintf(stderr, __VA_ARGS__);                                   \
+	fprintf(stderr, "\n")
 #else
-#define DEBUG(...)
+#define DEBUG_START(context, ...)
+#define DEBUG_END(context, ...)
 #endif
 
 void debug(String message);

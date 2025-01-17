@@ -12,6 +12,7 @@ struct ExpressionList;
 typedef struct StatementList StatementList;
 typedef struct UnaryExpression UnaryExpression;
 typedef struct Object Object;
+typedef struct ForLoop ForLoop;
 
 typedef struct {
 	StatementList* statements;
@@ -29,6 +30,7 @@ typedef enum {
 	EXPRESSION_BUILTIN_FUNCTION,
 	EXPRESSION_TYPE,
 	EXPRESSION_OBJECT,
+	EXPRESSION_FOR_LOOP
 } ExpressionType;
 
 typedef struct Expression Expression;
@@ -121,6 +123,8 @@ typedef union {
 	TypeDeclaration typeDeclaration;
 
 	Object* object;
+
+	ForLoop* forLoop;
 } ExpressionData;
 
 struct Expression {
@@ -192,6 +196,12 @@ struct BinaryOperator {
 	BinaryOperator* precedent;
 	TokenType* tokenTypes;
 	size_t tokenTypeCount;
+};
+
+struct ForLoop {
+	String binding;
+	Expression list;
+	Block body;
 };
 
 /**

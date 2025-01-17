@@ -18,6 +18,7 @@ typedef struct Context Context;
 struct Context {
 	Scope* scope;
 	Scope globalScope;
+	int debugIndent;
 };
 
 /**
@@ -84,6 +85,7 @@ Result declareNewVariable(Scope* scope, Declaration declaration);
  * an error is returned.
  */
 Result getVariable(Scope scope, char* name, Expression** output);
+Result setVariable(Scope* scope, Declaration declaration);
 
 Result enterNewScope(Context* context);
 Result exitScope(Context* context);

@@ -9,6 +9,8 @@ Klein is meant to fill the same niche as Lua&mdash;dead simple and highly embedd
 - More built-in functionality for tables and lists
 - Less ways of doing the same thing
 
+Af a glance, Klein is a statically, structurally typed interpreted multi-paradigm scripting language.
+
 ## Installation
 
 ### Building From Source

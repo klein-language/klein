@@ -45,6 +45,27 @@ Result declareNewVariable(Scope* scope, Declaration declaration) {
 	return OK;
 }
 
+Result setVariable(Scope* scope, Declaration declaration) {
+	// Error - null scope
+	if (scope == NULL) {
+		return ERROR_INTERNAL;
+	}
+
+	// Variable already exists
+	Expression* value = NULL;
+	getVariable(*scope, declaration.name, &value);
+
+	// Add the variable
+	if (value == NULL) {
+		TRY(appendToDeclarationList(&scope->variables, declaration));
+	} else {
+		*value = declaration.value;
+	}
+
+	// Return ok
+	return OK;
+}
+
 /**
  * Returns a pointer to the `Expression` value stored in the variable with the
  * given name in the given scope. This will traverse up the scope hierarchy
@@ -140,6 +161,7 @@ Result newContext(Context* output) {
 
 	*output = (Context) {
 		.globalScope = globalScope,
+		.debugIndent = 0,
 	};
 	output->scope = &output->globalScope;
 
@@ -159,5 +181,7 @@ PRIVATE void freeScope(Scope scope) {
 void freeContext(Context context) {
 	freeScope(context.globalScope);
 }
+
+static Context CONTEXT;
 
 IMPLEMENT_LIST(Scope)
