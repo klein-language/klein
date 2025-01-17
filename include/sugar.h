@@ -45,6 +45,7 @@ Result stringExpression(String value, Expression* output);
 Result getString(Expression expression, String** output);
 
 bool isString(Expression expression);
+bool isNumber(Expression expression);
 
 /**
  * Converts a C number (`double`) into a Klein number literal.

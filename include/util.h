@@ -41,38 +41,49 @@ typedef char* String;
 #endif
 
 #ifdef DEBUG_ON
-#define DEBUG_START(context, action, ...)                           \
-	for (int indent = 0; indent < context->debugIndent; indent++) { \
+#define DEBUG_START(action, ...)                                    \
+	for (int indent = 0; indent < CONTEXT->debugIndent; indent++) { \
 		fprintf(stderr, "%s ", COLOR("│", WHITE));                  \
 	}                                                               \
 	fprintf(stderr, "%s ", STYLE(action, GREEN, BOLD));             \
 	fprintf(stderr, __VA_ARGS__);                                   \
 	fprintf(stderr, "\n");                                          \
-	context->debugIndent++
-#define DEBUG_END(context, ...)                                     \
-	context->debugIndent--;                                         \
-	for (int indent = 0; indent < context->debugIndent; indent++) { \
+	CONTEXT->debugIndent++
+#define DEBUG_END(...)                                              \
+	CONTEXT->debugIndent--;                                         \
+	for (int indent = 0; indent < CONTEXT->debugIndent; indent++) { \
 		fprintf(stderr, "%s ", COLOR("│", WHITE));                  \
 	}                                                               \
 	fprintf(stderr, "%s ", STYLE("Done", GREEN, BOLD));             \
 	fprintf(stderr, __VA_ARGS__);                                   \
 	fprintf(stderr, "\n")
-#define DEBUG_LOG(context, action, ...)                             \
-	for (int indent = 0; indent < context->debugIndent; indent++) { \
+#define DEBUG_LOG(action, ...)                                      \
+	for (int indent = 0; indent < CONTEXT->debugIndent; indent++) { \
 		fprintf(stderr, "%s ", COLOR("│", WHITE));                  \
 	}                                                               \
-	fprintf(stderr, "%s ", STYLE("Done", GREEN, BOLD));             \
+	fprintf(stderr, "%s ", STYLE(action, GREEN, BOLD));             \
+	fprintf(stderr, __VA_ARGS__);                                   \
+	fprintf(stderr, "\n")
+#define DEBUG_ERROR(...)                                            \
+	for (int indent = 0; indent < CONTEXT->debugIndent; indent++) { \
+		fprintf(stderr, "%s ", COLOR("│", WHITE));                  \
+	}                                                               \
+	fprintf(stderr, "%s ", STYLE("Error", RED, BOLD));              \
 	fprintf(stderr, __VA_ARGS__);                                   \
 	fprintf(stderr, "\n")
 #else
-#define DEBUG_START(context, action, ...)
-#define DEBUG_END(context, ...)
-#define DEBUG_LOG(context, action, ...)
+#define DEBUG_START(action, ...)
+#define DEBUG_END(...)
+#define DEBUG_LOG(action, ...)
+#define DEBUG_ERROR(...)
 #endif
 
 #define MAX(x, y) (((x) >= (y)) ? (x) : (y))
 #define MIN(x, y) (((x) <= (y)) ? (x) : (y))
 
 void debug(String message);
+
+typedef struct Context Context;
+extern Context* CONTEXT;
 
 #endif

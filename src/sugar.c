@@ -1,5 +1,6 @@
 #include "../include/sugar.h"
 #include "../include/builtin.h"
+#include "../include/context.h"
 #include "../include/parser.h"
 
 /**
@@ -82,6 +83,7 @@ Result stringExpression(String value, Expression* output) {
  */
 Result getString(Expression expression, String** output) {
 	if (expression.type != EXPRESSION_OBJECT) {
+		DEBUG_ERROR("Attempted to convert a non-string to a string");
 		return ERROR_INTERNAL;
 	}
 
@@ -91,6 +93,11 @@ Result getString(Expression expression, String** output) {
 bool isString(Expression expression) {
 	String* output;
 	return getString(expression, &output) == OK;
+}
+
+bool isNumber(Expression expression) {
+	double* output;
+	return getNumber(expression, &output) == OK;
 }
 
 /**
@@ -130,6 +137,15 @@ Result numberExpression(double value, Expression* output) {
 	FieldList fields;
 	TRY(emptyFieldList(&fields));
 
+	// .to()
+	Expression to = (Expression) {
+		.type = EXPRESSION_IDENTIFIER,
+		.data = (ExpressionData) {
+			.identifier = "range",
+		},
+	};
+	TRY(appendToFieldList(&fields, (Field) {.name = "to", .value = to}));
+
 	// Create object
 	Object* object = malloc(sizeof(Object));
 	ASSERT_NONNULL(object);
@@ -163,6 +179,7 @@ Result numberExpression(double value, Expression* output) {
  */
 Result getNumber(Expression expression, double** output) {
 	if (expression.type != EXPRESSION_OBJECT) {
+		DEBUG_ERROR("Attempted to convert a non-object to a number");
 		return ERROR_INTERNAL;
 	}
 
@@ -181,6 +198,20 @@ Result listExpression(ExpressionList values, Expression* output) {
 	// Fields
 	FieldList fields;
 	TRY(emptyFieldList(&fields));
+
+	// .append()
+	BuiltinFunction function;
+	TRY(getBuiltin("List.append", &function));
+	Expression append = (Expression) {
+		.type = EXPRESSION_BUILTIN_FUNCTION,
+		.data = (ExpressionData) {
+			.builtinFunction = (BuiltinFunctionExpression) {
+				.function = function,
+				.thisObject = NULL,
+			},
+		},
+	};
+	TRY(appendToFieldList(&fields, (Field) {.name = "append", .value = append}));
 
 	// Create object
 	Object* object = malloc(sizeof(Object));

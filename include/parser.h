@@ -24,7 +24,6 @@ typedef enum {
 	EXPRESSION_BOOLEAN,
 	EXPRESSION_BINARY,
 	EXPRESSION_FUNCTION,
-	EXPRESSION_NUMBER,
 	EXPRESSION_BLOCK,
 	EXPRESSION_UNARY,
 	EXPRESSION_IDENTIFIER,
@@ -244,7 +243,8 @@ Result getObjectField(Object object, char* name, Expression** output);
  * returned. If an unexpected token is encountered while parsing (i.e. the user entered
  * malformatted syntax), an error is returned.
  */
-Result parse(void* context, TokenList* tokens, Program* output);
+Result parse(TokenList* tokens, Program* output);
+String expressionTypeName(ExpressionType type);
 void freeProgram(Program program);
 
 #endif

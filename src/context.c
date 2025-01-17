@@ -45,7 +45,28 @@ Result declareNewVariable(Scope* scope, Declaration declaration) {
 	return OK;
 }
 
+Result reassignVariable(Scope* scope, Declaration declaration) {
+	// Error - null scope
+	if (scope == NULL) {
+		return ERROR_INTERNAL;
+	}
+
+	// Variable already exists
+	Expression* value = NULL;
+	if (getVariable(*scope, declaration.name, &value) != OK) {
+		return ERROR_REFERENCE_NONEXISTENT_VARIABLE;
+	}
+
+	// Add the variable
+	*value = declaration.value;
+
+	// Return ok
+	return OK;
+}
+
 Result setVariable(Scope* scope, Declaration declaration) {
+	DEBUG_LOG("Setting", "variable \"%s\" to a %s", declaration.name, expressionTypeName(declaration.value.type));
+
 	// Error - null scope
 	if (scope == NULL) {
 		return ERROR_INTERNAL;
@@ -89,11 +110,13 @@ Result setVariable(Scope* scope, Declaration declaration) {
  * If no variable exists with the given name in the given scope,
  * an error is returned.
  */
-Result getVariable(Scope scope, char* name, Expression** output) {
+Result getVariable(Scope scope, String name, Expression** output) {
+	DEBUG_LOG("Resolving", "variable \"%s\"", name);
 	Scope* current = &scope;
 	while (current != NULL) {
 		FOR_EACH_REF(Declaration * variable, current->variables) {
 			if (strcmp(variable->name, name) == 0) {
+				DEBUG_LOG("Resolved", "variable \"%s\" to be a %s", name, expressionTypeName(variable->value.type));
 				RETURN_OK(output, &variable->value);
 			}
 		}
@@ -101,10 +124,11 @@ Result getVariable(Scope scope, char* name, Expression** output) {
 		current = current->parent;
 	}
 
+	DEBUG_ERROR("Variable \"%s\" couldn't be resolved", name);
 	return ERROR_REFERENCE_NONEXISTENT_VARIABLE;
 }
 
-Result enterNewScope(Context* context) {
+Result enterNewScope() {
 	ScopeList children;
 	TRY(emptyScopeList(&children));
 
@@ -112,23 +136,23 @@ Result enterNewScope(Context* context) {
 	TRY(emptyDeclarationList(&variables));
 
 	Scope scope = (Scope) {
-		.parent = context->scope,
+		.parent = CONTEXT->scope,
 		.children = children,
 		.variables = variables,
 	};
 
-	TRY(appendToScopeList(&context->scope->children, scope));
-	context->scope = &context->scope->children.data[context->scope->children.size - 1];
+	TRY(appendToScopeList(&CONTEXT->scope->children, scope));
+	CONTEXT->scope = &CONTEXT->scope->children.data[CONTEXT->scope->children.size - 1];
 
 	return OK;
 }
 
-Result exitScope(Context* context) {
-	if (context->scope->parent == NULL) {
+Result exitScope() {
+	if (CONTEXT->scope->parent == NULL) {
 		return ERROR_INTERNAL;
 	}
 
-	context->scope = context->scope->parent;
+	CONTEXT->scope = CONTEXT->scope->parent;
 
 	return OK;
 }
@@ -181,7 +205,5 @@ PRIVATE void freeScope(Scope scope) {
 void freeContext(Context context) {
 	freeScope(context.globalScope);
 }
-
-static Context CONTEXT;
 
 IMPLEMENT_LIST(Scope)

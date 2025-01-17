@@ -28,8 +28,8 @@
  * If the given argument isn't a string, an error is returned.
  * If the underlying `printf` call fails (for any reason), an error is returned.
  */
-PRIVATE Result print(Context* context, ExpressionList* arguments, Expression* output) {
-	DEBUG_START(context, "Evaluating", "builtin function call print()");
+PRIVATE Result print(ExpressionList* arguments, Expression* output) {
+	DEBUG_START("Evaluating", "builtin function call print()");
 	SUPPRESS_UNUSED(output);
 
 	if (arguments->size < 1) {
@@ -61,7 +61,7 @@ PRIVATE Result print(Context* context, ExpressionList* arguments, Expression* ou
 
 	Expression* expression = arguments->data;
 	if (expression->type == EXPRESSION_IDENTIFIER) {
-		TRY(getVariable(*context->scope, expression->data.identifier, &expression));
+		TRY(getVariable(*CONTEXT->scope, expression->data.identifier, &expression));
 	}
 
 	TRY_LET(String*, stringValue, getString, *expression);
@@ -101,9 +101,7 @@ PRIVATE Result print(Context* context, ExpressionList* arguments, Expression* ou
  * If the underlying `getline` call fails (for any reason), an error is returned.
  * If creating the string expression fails for any reason, an error is returned.
  */
-PRIVATE Result input(Context* context, ExpressionList* arguments, Expression* output) {
-	SUPPRESS_UNUSED(context);
-
+PRIVATE Result input(ExpressionList* arguments, Expression* output) {
 	if (arguments->size > 1) {
 		return ERROR_INVALID_ARGUMENTS;
 	}
@@ -132,14 +130,14 @@ PRIVATE Result input(Context* context, ExpressionList* arguments, Expression* ou
 	RETURN_OK(output, result);
 }
 
-PRIVATE Result stringLength(Context* context, ExpressionList* arguments, Expression* output) {
+PRIVATE Result stringLength(ExpressionList* arguments, Expression* output) {
 	if (arguments->size != 1) {
 		return ERROR_INVALID_ARGUMENTS;
 	}
 
 	Expression* expression = arguments->data;
 	if (expression->type == EXPRESSION_IDENTIFIER) {
-		TRY(getVariable(*context->scope, expression->data.identifier, &expression));
+		TRY(getVariable(*CONTEXT->scope, expression->data.identifier, &expression));
 	}
 
 	String* stringValue;
@@ -149,6 +147,19 @@ PRIVATE Result stringLength(Context* context, ExpressionList* arguments, Express
 	TRY(numberExpression((double) strlen(*stringValue), &number));
 
 	RETURN_OK(output, number);
+}
+
+PRIVATE Result listAppend(ExpressionList* arguments, Expression* output) {
+	if (arguments->size != 2) {
+		return ERROR_INVALID_ARGUMENTS;
+	}
+
+	Expression list = arguments->data[0];
+	TRY_LET(ExpressionList*, elements, getList, list);
+
+	TRY(appendToExpressionList(elements, arguments->data[1]));
+
+	return OK;
 }
 
 Result getBuiltin(String name, BuiltinFunction* output) {
@@ -162,6 +173,10 @@ Result getBuiltin(String name, BuiltinFunction* output) {
 
 	if (strcmp(name, "String.length") == 0) {
 		RETURN_OK(output, &stringLength);
+	}
+
+	if (strcmp(name, "List.append") == 0) {
+		RETURN_OK(output, &listAppend);
 	}
 
 	return ERROR_INTERNAL;

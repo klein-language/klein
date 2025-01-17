@@ -4,6 +4,6 @@
 #include "parser.h"
 #include "result.h"
 
-Result run(struct Context* context, Program program);
+Result run(Program program);
 
 #endif

@@ -6,9 +6,8 @@
 
 struct Expression;
 struct ExpressionList;
-struct Context;
 
-typedef Result (*BuiltinFunction)(struct Context*, struct ExpressionList*, struct Expression*);
+typedef Result (*BuiltinFunction)(struct ExpressionList*, struct Expression*);
 
 Result getBuiltin(String name, BuiltinFunction* output);
 

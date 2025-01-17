@@ -86,9 +86,10 @@ Result declareNewVariable(Scope* scope, Declaration declaration);
  */
 Result getVariable(Scope scope, char* name, Expression** output);
 Result setVariable(Scope* scope, Declaration declaration);
+Result reassignVariable(Scope* scope, Declaration declaration);
 
-Result enterNewScope(Context* context);
-Result exitScope(Context* context);
+Result enterNewScope();
+Result exitScope();
 
 void freeContext(Context context);
 

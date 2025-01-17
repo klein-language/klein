@@ -60,18 +60,18 @@ PRIVATE Result runFile(String filePath) {
 	free(sourceCode);
 
 	// Context
-	Context context;
-	TRY(newContext(&context));
+	CONTEXT = malloc(sizeof(Context));
+	TRY(newContext(CONTEXT));
 
 	// Parse
-	TRY_LET(Program, program, parse, &context, &tokens);
+	TRY_LET(Program, program, parse, &tokens);
 
 	// Run
-	TRY(run(&context, program));
+	TRY(run(program));
 
 	// Cleanup
 	freeProgram(program);
-	freeContext(context);
+	freeContext(*CONTEXT);
 
 	// Done
 	return OK;
