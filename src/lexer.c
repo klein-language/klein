@@ -79,6 +79,11 @@ PRIVATE Result getNextToken(String sourceCode, Token* output) {
 			return createToken(TOKEN_TYPE_DOT, ".", output);
 		case ',':
 			return createToken(TOKEN_TYPE_COMMA, ",", output);
+		case '<':
+			if (strncmp("<=", sourceCode, MIN(2, strlen(sourceCode))) == 0) {
+				return createToken(TOKEN_TYPE_LESS_THAN_OR_EQUAL_TO, "<=", output);
+			}
+			return createToken(TOKEN_TYPE_LESS_THAN, "<", output);
 		case '(':
 			TRY(createToken(TOKEN_TYPE_LEFT_PARENTHESIS, "(", output));
 			return OK;
@@ -113,15 +118,29 @@ PRIVATE Result getNextToken(String sourceCode, Token* output) {
 			return OK;
 	}
 
+	// Number
+	if (*current >= '0' && *current <= '1') {
+		CharList characters;
+		TRY(emptyCharList(&characters));
+		while ((*current >= '0' && *current <= '1') && current < sourceCode + strlen(sourceCode)) {
+			TRY(appendToCharList(&characters, *current));
+			current++;
+		}
+		TRY(appendToCharList(&characters, '\0'));
+		TRY_LET(Token, token, createToken, TOKEN_TYPE_NUMBER, characters.data);
+		RETURN_OK(output, token);
+	}
+
 	// Identifier
 	if ((*current >= 'A' && *current <= 'Z') ||
 		(*current >= 'a' && *current <= 'z') || *current == '_') {
 		CharList identifierCharacters;
 		TRY(emptyCharList(&identifierCharacters));
-		while ((*current >= 'A' && *current <= 'Z') ||
-			   (*current >= 'a' && *current <= 'z') ||
-			   (*current >= '0' && *current <= '9') ||
-			   *current == '_') {
+		while (((*current >= 'A' && *current <= 'Z') ||
+				(*current >= 'a' && *current <= 'z') ||
+				(*current >= '0' && *current <= '9') ||
+				*current == '_') &&
+			   current < sourceCode + strlen(sourceCode)) {
 			TRY(appendToCharList(&identifierCharacters, *current));
 			current++;
 		}
@@ -146,10 +165,14 @@ PRIVATE Result getNextToken(String sourceCode, Token* output) {
 			type = TOKEN_TYPE_KEYWORD_FOR;
 		} else if (strcmp(identifier, "in") == 0) {
 			type = TOKEN_TYPE_KEYWORD_IN;
+		} else if (strcmp(identifier, "return") == 0) {
+			type = TOKEN_TYPE_KEYWORD_RETURN;
 		} else if (strcmp(identifier, "if") == 0) {
 			type = TOKEN_TYPE_KEYWORD_IF;
 		} else if (strcmp(identifier, "type") == 0) {
 			type = TOKEN_TYPE_KEYWORD_TYPE;
+		} else if (strcmp(identifier, "while") == 0) {
+			type = TOKEN_TYPE_KEYWORD_WHILE;
 		} else if (strcmp(identifier, "else") == 0) {
 			type = TOKEN_TYPE_KEYWORD_ELSE;
 		}
@@ -180,6 +203,7 @@ PRIVATE Result getNextToken(String sourceCode, Token* output) {
 	}
 
 	// Unrecognized
+	fprintf(stderr, "%s\n", sourceCode);
 	return ERROR_UNRECOGNIZED_TOKEN;
 }
 

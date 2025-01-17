@@ -13,6 +13,7 @@ typedef struct StatementList StatementList;
 typedef struct UnaryExpression UnaryExpression;
 typedef struct Object Object;
 typedef struct ForLoop ForLoop;
+typedef struct WhileLoop WhileLoop;
 
 typedef struct {
 	StatementList* statements;
@@ -30,7 +31,8 @@ typedef enum {
 	EXPRESSION_BUILTIN_FUNCTION,
 	EXPRESSION_TYPE,
 	EXPRESSION_OBJECT,
-	EXPRESSION_FOR_LOOP
+	EXPRESSION_FOR_LOOP,
+	EXPRESSION_WHILE_LOOP
 } ExpressionType;
 
 typedef struct Expression Expression;
@@ -70,6 +72,7 @@ struct Function {
 };
 
 typedef enum {
+	BINARY_OPERATION_ASSIGN,
 	BINARY_OPERATION_PLUS,
 	BINARY_OPERATION_MINUS,
 	BINARY_OPERATION_TIMES,
@@ -125,6 +128,7 @@ typedef union {
 	Object* object;
 
 	ForLoop* forLoop;
+	WhileLoop* whileLoop;
 } ExpressionData;
 
 struct Expression {
@@ -169,6 +173,7 @@ struct Object {
 typedef enum {
 	STATEMENT_DECLARATION,
 	STATEMENT_EXPRESSION,
+	STATEMENT_RETURN,
 } StatementType;
 
 typedef struct {
@@ -182,6 +187,7 @@ DEFINE_LIST(Declaration)
 typedef union {
 	Declaration declaration;
 	Expression expression;
+	Expression returnExpression;
 } StatementData;
 
 typedef struct {
@@ -201,6 +207,11 @@ struct BinaryOperator {
 struct ForLoop {
 	String binding;
 	Expression list;
+	Block body;
+};
+
+struct WhileLoop {
+	Expression condition;
 	Block body;
 };
 

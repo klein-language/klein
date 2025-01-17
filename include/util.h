@@ -57,10 +57,21 @@ typedef char* String;
 	fprintf(stderr, "%s ", STYLE("Done", GREEN, BOLD));             \
 	fprintf(stderr, __VA_ARGS__);                                   \
 	fprintf(stderr, "\n")
+#define DEBUG_LOG(context, action, ...)                             \
+	for (int indent = 0; indent < context->debugIndent; indent++) { \
+		fprintf(stderr, "%s ", COLOR("│", WHITE));                  \
+	}                                                               \
+	fprintf(stderr, "%s ", STYLE("Done", GREEN, BOLD));             \
+	fprintf(stderr, __VA_ARGS__);                                   \
+	fprintf(stderr, "\n")
 #else
-#define DEBUG_START(context, ...)
+#define DEBUG_START(context, action, ...)
 #define DEBUG_END(context, ...)
+#define DEBUG_LOG(context, action, ...)
 #endif
+
+#define MAX(x, y) (((x) >= (y)) ? (x) : (y))
+#define MIN(x, y) (((x) <= (y)) ? (x) : (y))
 
 void debug(String message);
 
