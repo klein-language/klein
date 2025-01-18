@@ -335,6 +335,30 @@ PRIVATE Result parseLiteral(TokenList* tokens, Expression* output) {
 			RETURN_OK(output, loop);
 		}
 
+		case TOKEN_TYPE_KEYWORD_IF: {
+			DEBUG_START("Parsing", "if expression");
+
+			UNWRAP_LET(String, next, popToken, tokens, TOKEN_TYPE_KEYWORD_IF);
+			TRY_LET(Expression, condition, parseExpression, tokens);
+			TRY_LET(Block, body, parseBlock, tokens);
+
+			IfExpression* ifExpression = malloc(sizeof(IfExpression));
+			*ifExpression = (IfExpression) {
+				.condition = condition,
+				.body = body,
+			};
+
+			Expression loop = (Expression) {
+				.type = EXPRESSION_IF,
+				.data = (ExpressionData) {
+					.ifExpression = ifExpression,
+				},
+			};
+			DEBUG_END("parsing if expression");
+			DEBUG_END("parsing literal");
+			RETURN_OK(output, loop);
+		}
+
 		// Object literal
 		case TOKEN_TYPE_LEFT_BRACE: {
 			TRY_LET(Expression, object, parseObjectLiteral, tokens);
@@ -595,6 +619,9 @@ PRIVATE Result binaryOperationOf(String tokenValue, BinaryOperation* output) {
 	}
 	if (strcmp(tokenValue, "<=") == 0) {
 		RETURN_OK(output, BINARY_OPERATION_LESS_THAN_OR_EQUAL_TO);
+	}
+	if (strcmp(tokenValue, "==") == 0) {
+		RETURN_OK(output, BINARY_OPERATION_EQUAL);
 	}
 	if (strcmp(tokenValue, "=") == 0) {
 		RETURN_OK(output, BINARY_OPERATION_ASSIGN);
@@ -927,6 +954,8 @@ String expressionTypeName(ExpressionType type) {
 			return "while loop expression";
 		case EXPRESSION_FOR_LOOP:
 			return "for loop expression";
+		case EXPRESSION_IF:
+			return "if expression";
 	}
 }
 

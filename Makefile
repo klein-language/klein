@@ -1,6 +1,6 @@
-CC ?= clang
-LOCATION ?= /usr/bin
-DEBUG ?= false
+CC = clang
+LOCATION = /usr/bin
+DEBUG = false
 
 MAKEFLAGS += --silent
 
@@ -15,6 +15,11 @@ OBJS = $(SRCS:src/%.c=$(OBJDIR)/%.o)
 # Clang flags
 ifeq ($(CC), clang)
 	CFLAGS = -ferror-limit=0 -fdiagnostics-color=always -Wall -Wextra -Weverything -Wno-padded -Wno-extra-semi-stmt -Wno-switch-default -Wno-unsafe-buffer-usage -Wno-declaration-after-statement -Wno-switch-enum
+endif
+
+# gcc flags
+ifeq ($(CC), gcc)
+	CFLAGS = -Wall -Wextra
 endif
 
 # Debug
@@ -35,7 +40,6 @@ $(OBJDIR)/%.o: src/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Build the binary
-build: CFLAGS += -O3
 build: clean $(TARGET)
 
 # Build & run Valgrind to check for memory errors

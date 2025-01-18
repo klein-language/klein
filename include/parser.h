@@ -14,6 +14,7 @@ typedef struct UnaryExpression UnaryExpression;
 typedef struct Object Object;
 typedef struct ForLoop ForLoop;
 typedef struct WhileLoop WhileLoop;
+typedef struct IfExpression IfExpression;
 
 typedef struct {
 	StatementList* statements;
@@ -31,7 +32,8 @@ typedef enum {
 	EXPRESSION_TYPE,
 	EXPRESSION_OBJECT,
 	EXPRESSION_FOR_LOOP,
-	EXPRESSION_WHILE_LOOP
+	EXPRESSION_WHILE_LOOP,
+	EXPRESSION_IF
 } ExpressionType;
 
 typedef struct Expression Expression;
@@ -83,7 +85,8 @@ typedef enum {
 	BINARY_OPERATION_LESS_THAN,
 	BINARY_OPERATION_GREATER_THAN,
 	BINARY_OPERATION_LESS_THAN_OR_EQUAL_TO,
-	BINARY_OPERATION_GREATER_THAN_OR_EQUAL_TO
+	BINARY_OPERATION_GREATER_THAN_OR_EQUAL_TO,
+	BINARY_OPERATION_EQUAL
 } BinaryOperation;
 
 typedef struct {
@@ -127,7 +130,10 @@ typedef union {
 	Object* object;
 
 	ForLoop* forLoop;
+
 	WhileLoop* whileLoop;
+
+	IfExpression* ifExpression;
 } ExpressionData;
 
 struct Expression {
@@ -210,6 +216,11 @@ struct ForLoop {
 };
 
 struct WhileLoop {
+	Expression condition;
+	Block body;
+};
+
+struct IfExpression {
 	Expression condition;
 	Block body;
 };

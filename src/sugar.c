@@ -151,6 +151,20 @@ Result numberExpression(double value, Expression* output) {
 	};
 	TRY(appendToFieldList(&fields, (Field) {.name = "to", .value = to}));
 
+	// .mod()
+	BuiltinFunction function;
+	TRY(getBuiltin("Number.mod", &function));
+	Expression mod = (Expression) {
+		.type = EXPRESSION_BUILTIN_FUNCTION,
+		.data = (ExpressionData) {
+			.builtinFunction = (BuiltinFunctionExpression) {
+				.function = function,
+				.thisObject = NULL,
+			},
+		},
+	};
+	TRY(appendToFieldList(&fields, (Field) {.name = "mod", .value = mod}));
+
 	// Create object
 	Object* object = malloc(sizeof(Object));
 	ASSERT_NONNULL(object);

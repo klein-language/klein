@@ -129,6 +129,59 @@ PRIVATE Result expressionToString(Expression expression, Expression* output) {
 	return OK;
 }
 
+Result expressionsAreEqual(Expression left, Expression right, Expression* output) {
+	Expression* leftValue = &left;
+	if (leftValue->type == EXPRESSION_IDENTIFIER) {
+		TRY(getVariable(*CONTEXT->scope, leftValue->data.identifier, &leftValue));
+	}
+
+	Expression* rightValue = &right;
+	if (rightValue->type == EXPRESSION_IDENTIFIER) {
+		TRY(getVariable(*CONTEXT->scope, rightValue->data.identifier, &rightValue));
+	}
+
+	if (leftValue->type == EXPRESSION_OBJECT && rightValue->type == EXPRESSION_OBJECT) {
+		if (isNumber(*leftValue) && isNumber(*rightValue)) {
+			TRY_LET(double*, leftNumber, getNumber, *leftValue);
+			TRY_LET(double*, rightNumber, getNumber, *rightValue);
+			Expression result = (Expression) {
+				.type = EXPRESSION_BOOLEAN,
+				.data = (ExpressionData) {
+					.boolean = *leftNumber == *rightNumber,
+				},
+			};
+			RETURN_OK(output, result);
+		}
+
+		return ERROR_INVALID_OPERAND;
+	}
+
+	return ERROR_INVALID_OPERAND;
+}
+
+PRIVATE Result numberMod(ExpressionList* arguments, Expression* output) {
+	if (arguments->size != 2) {
+		DEBUG_ERROR("Passed %d arguments to Number.mod", arguments->size);
+		return ERROR_INVALID_ARGUMENTS;
+	}
+
+	Expression* leftValue = &arguments->data[0];
+	if (leftValue->type == EXPRESSION_IDENTIFIER) {
+		TRY(getVariable(*CONTEXT->scope, leftValue->data.identifier, &leftValue));
+	}
+
+	Expression* rightValue = &arguments->data[1];
+	if (rightValue->type == EXPRESSION_IDENTIFIER) {
+		TRY(getVariable(*CONTEXT->scope, rightValue->data.identifier, &rightValue));
+	}
+
+	TRY_LET(double*, leftNumber, getNumber, *leftValue);
+	TRY_LET(double*, rightNumber, getNumber, *rightValue);
+
+	double result = (int) *leftNumber % (int) *rightNumber;
+	return numberExpression(result, output);
+}
+
 /**
  * The built-in `print` function. This converts it's argument into a string and prints it,
  * ending with a trailing newline, and returning `null`.
@@ -156,6 +209,7 @@ PRIVATE Result print(ExpressionList* arguments, Expression* output) {
 	SUPPRESS_UNUSED(output);
 
 	if (arguments->size < 1) {
+		DEBUG_ERROR("Passed %d arguments to print", arguments->size);
 		return ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -218,6 +272,10 @@ Result getBuiltin(String name, BuiltinFunction* output) {
 
 	if (strcmp(name, "List.append") == 0) {
 		RETURN_OK(output, &listAppend);
+	}
+
+	if (strcmp(name, "Number.mod") == 0) {
+		RETURN_OK(output, &numberMod);
 	}
 
 	return ERROR_INTERNAL;

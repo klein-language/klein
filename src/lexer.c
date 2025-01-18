@@ -71,8 +71,10 @@ PRIVATE Result getNextToken(String sourceCode, Token* output) {
 	// Symbols
 	switch (*current) {
 		case '=':
-			TRY(createToken(TOKEN_TYPE_EQUALS, "=", output));
-			return OK;
+			if (strncmp("==", sourceCode, MIN(2, strlen(sourceCode))) == 0) {
+				return createToken(TOKEN_TYPE_DOUBLE_EQUALS, "==", output);
+			}
+			return createToken(TOKEN_TYPE_EQUALS, "=", output);
 		case '+':
 			return createToken(TOKEN_TYPE_PLUS, "+", output);
 		case '.':

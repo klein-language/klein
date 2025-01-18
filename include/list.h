@@ -21,6 +21,7 @@ typedef char Char;
 	Result appendTo##type##List(type##List* list, type value);  \
 	Result prependTo##type##List(type##List* list, type value); \
 	bool is##type##ListEmpty(type##List list);                  \
+	Result pop##type##List(type##List* list);                   \
 	type getFrom##type##ListUnchecked(type##List list, size_t index);
 
 #define IMPLEMENT_LIST(type)                                                         \
@@ -72,6 +73,20 @@ typedef char Char;
                                                                                      \
 		list->data[0] = value;                                                       \
 		list->size++;                                                                \
+                                                                                     \
+		return OK;                                                                   \
+	}                                                                                \
+                                                                                     \
+	Result pop##type##List(type##List* list) {                                       \
+		if (list->size == 0) {                                                       \
+			return ERROR_INTERNAL;                                                   \
+		}                                                                            \
+                                                                                     \
+		for (size_t index = 0; index < list->size - 1; index++) {                    \
+			list->data[index] = list->data[index + 1];                               \
+		}                                                                            \
+                                                                                     \
+		list->size--;                                                                \
                                                                                      \
 		return OK;                                                                   \
 	}                                                                                \
