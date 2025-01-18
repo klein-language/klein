@@ -27,6 +27,7 @@
  * an error is returned.
  */
 Result declareNewVariable(Scope* scope, Declaration declaration) {
+	DEBUG_START("Declaring", "new variable \"%s\"", declaration.name);
 	// Error - null scope
 	if (scope == NULL) {
 		return ERROR_INTERNAL;
@@ -35,6 +36,7 @@ Result declareNewVariable(Scope* scope, Declaration declaration) {
 	// Error - Variable already exists
 	Expression* value = NULL;
 	if (getVariable(*scope, declaration.name, &value) == OK) {
+		DEBUG_ERROR("Variable \"%s\", already exists, declaration.name");
 		return ERROR_DUPLICATE_VARIABLE;
 	}
 
@@ -42,6 +44,7 @@ Result declareNewVariable(Scope* scope, Declaration declaration) {
 	TRY(appendToDeclarationList(&scope->variables, declaration));
 
 	// Return ok
+	DEBUG_END("Declaring new variable \"%s\"", declaration.name);
 	return OK;
 }
 
@@ -116,7 +119,7 @@ Result getVariable(Scope scope, String name, Expression** output) {
 	while (current != NULL) {
 		FOR_EACH_REF(Declaration * variable, current->variables) {
 			if (strcmp(variable->name, name) == 0) {
-				DEBUG_LOGN("Resolved", "variable %s: %s = ", name, expressionTypeName(variable->value.type));
+				DEBUG_LOG("Resolved", "variable %s: %s = ", name, expressionTypeName(variable->value.type));
 				RETURN_OK(output, &variable->value);
 			}
 		}

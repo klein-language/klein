@@ -43,7 +43,7 @@ typedef char* String;
 #ifdef DEBUG_ON
 #define DEBUG_START(action, ...)                                    \
 	for (int indent = 0; indent < CONTEXT->debugIndent; indent++) { \
-		fprintf(stderr, "%s ", COLOR("│", WHITE));                  \
+		fprintf(stderr, "\033[0;3%dm│ ", indent % 7 + 1);           \
 	}                                                               \
 	fprintf(stderr, "%s ", STYLE(action, GREEN, BOLD));             \
 	fprintf(stderr, __VA_ARGS__);                                   \
@@ -52,27 +52,27 @@ typedef char* String;
 #define DEBUG_END(...)                                              \
 	CONTEXT->debugIndent--;                                         \
 	for (int indent = 0; indent < CONTEXT->debugIndent; indent++) { \
-		fprintf(stderr, "%s ", COLOR("│", WHITE));                  \
+		fprintf(stderr, "\033[0;3%dm│ ", indent % 7 + 1);           \
 	}                                                               \
 	fprintf(stderr, "%s ", STYLE("Done", GREEN, BOLD));             \
 	fprintf(stderr, __VA_ARGS__);                                   \
 	fprintf(stderr, "\n")
 #define DEBUG_LOG(action, ...)                                      \
 	for (int indent = 0; indent < CONTEXT->debugIndent; indent++) { \
-		fprintf(stderr, "%s ", COLOR("│", WHITE));                  \
+		fprintf(stderr, "\033[0;3%dm│ ", indent % 7 + 1);           \
 	}                                                               \
 	fprintf(stderr, "%s ", STYLE(action, GREEN, BOLD));             \
 	fprintf(stderr, __VA_ARGS__);                                   \
 	fprintf(stderr, "\n")
 #define DEBUG_LOGN(action, ...)                                     \
 	for (int indent = 0; indent < CONTEXT->debugIndent; indent++) { \
-		fprintf(stderr, "%s ", COLOR("│", WHITE));                  \
+		fprintf(stderr, "\033[0;3%dm│ ", indent % 7 + 1);           \
 	}                                                               \
 	fprintf(stderr, "%s ", STYLE(action, GREEN, BOLD));             \
 	fprintf(stderr, __VA_ARGS__);
 #define DEBUG_ERROR(...)                                            \
 	for (int indent = 0; indent < CONTEXT->debugIndent; indent++) { \
-		fprintf(stderr, "%s ", COLOR("│", WHITE));                  \
+		fprintf(stderr, "\033[0;3%dm│ ", indent % 7 + 1);           \
 	}                                                               \
 	fprintf(stderr, "%s ", STYLE("Error", RED, BOLD));              \
 	fprintf(stderr, __VA_ARGS__);                                   \

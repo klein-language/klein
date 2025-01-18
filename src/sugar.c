@@ -237,9 +237,12 @@ Result listExpression(ExpressionList values, Expression* output) {
 }
 
 Result getList(Expression expression, ExpressionList** output) {
+	DEBUG_START("Getting", "internal list value");
 	if (expression.type != EXPRESSION_OBJECT) {
 		return ERROR_INTERNAL;
 	}
 
-	return getObjectInternal(*expression.data.object, "elements", (void**) output);
+	TRY(getObjectInternal(*expression.data.object, "elements", (void**) output));
+	DEBUG_END("getting internal list value");
+	return OK;
 }

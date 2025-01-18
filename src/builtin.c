@@ -153,7 +153,6 @@ PRIVATE Result expressionToString(Expression expression, Expression* output) {
  * If the underlying `printf` call fails (for any reason), an error is returned.
  */
 PRIVATE Result print(ExpressionList* arguments, Expression* output) {
-	DEBUG_START("Evaluating", "builtin function call print()");
 	SUPPRESS_UNUSED(output);
 
 	if (arguments->size < 1) {
