@@ -4,6 +4,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+bool fileExists(String path) {
+	return fopen(path, "rb") != NULL;
+}
+
 Result readFile(String path, String* output) {
 
 	// Open file
@@ -38,7 +42,8 @@ void printHelp(bool detailed) {
 		fprintf(stderr, " \t%s %s               Run a klein file\n", STYLE("run", BLUE, BOLD), COLOR("<FILE>", RED));
 		fprintf(stderr, " \t%s %s             Check a klein file for static errors\n", STYLE("check", BLUE, BOLD), COLOR("<FILE>", RED));
 		fprintf(stderr, " \t%s                  Print version information\n", STYLE("version", BLUE, BOLD));
-		fprintf(stderr, " \t%s %s        Show the help menu\n\n", STYLE("help", BLUE, BOLD), COLOR("[--detailed]", YELLOW));
+		fprintf(stderr, " \t%s %s        Show the help menu\n", STYLE("help", BLUE, BOLD), COLOR("[--detailed]", YELLOW));
+		fprintf(stderr, " \t%s                   Shorthand for %s %s %s\n\n", COLOR("<FILE>", RED), STYLE("klein", PURPLE, BOLD), STYLE("run", BLUE, BOLD), COLOR("<FILE>", RED));
 	}
 }
 

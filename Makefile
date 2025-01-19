@@ -4,10 +4,11 @@ DEBUG = false
 
 MAKEFLAGS += --silent
 
-CACHEDIR = .cache
+CACHEDIR = ./.cache
 OBJDIR = $(CACHEDIR)/obj
 VALGRINDDIR = $(CACHEDIR)/valgrind
-TARGET = build/klein
+TARGET = ./build/klein
+TESTFILE = ./tests/test.kl
 
 SRCS = $(wildcard src/*.c)
 OBJS = $(SRCS:src/%.c=$(OBJDIR)/%.o)
@@ -29,7 +30,7 @@ endif
 
 # Build when just running `make`
 all: build
-	./$(TARGET)
+	$(TARGET)
 
 # Link & compile object files into native executable
 $(TARGET): $(OBJS)
@@ -45,7 +46,7 @@ build: clean $(TARGET)
 # Build & run Valgrind to check for memory errors
 check: CFLAGS += -g -ggdb3
 check: build
-	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose --log-file=.cache/valgrind/valgrind-out.txt ./$(TARGET) ./tests/test.klein
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose --log-file=.cache/valgrind/valgrind-out.txt $(TARGET) run $(TESTFILE)
 
 # Clean cache files (object files, valgrind logs, etc.)
 clean:
@@ -58,14 +59,15 @@ clean:
 
 # Run on the test file
 test: build
-	./$(TARGET) tests/test.klein
+	$(TARGET) $(TESTFILE)
 
+# Run with debug mode
 debug: CFLAGS += -DDEBUG_ON
 debug: test
 
 # Install on the system
 install: build
 	sudo mkdir -p $(LOCATION)
-	sudo mv ./$(TARGET) $(LOCATION)/klein
+	sudo mv $(TARGET) $(LOCATION)/klein
 
-.PHONY: all clean check build test install
+.PHONY: all clean check build test install debug

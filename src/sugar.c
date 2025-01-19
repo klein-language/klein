@@ -260,3 +260,6 @@ Result getList(Expression expression, ExpressionList** output) {
 	DEBUG_END("getting internal list value");
 	return OK;
 }
+
+Result desugar(Expression expression, Expression* output) {
+}

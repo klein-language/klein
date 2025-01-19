@@ -88,8 +88,8 @@ Result getVariable(Scope scope, char* name, Expression** output);
 Result setVariable(Scope* scope, Declaration declaration);
 Result reassignVariable(Scope* scope, Declaration declaration);
 
-Result enterNewScope();
-Result exitScope();
+Result enterNewScope(void);
+Result exitScope(void);
 
 void freeContext(Context context);
 

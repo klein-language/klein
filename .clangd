@@ -1,0 +1,14 @@
+CompileFlags:
+  Add: [
+    -ferror-limit=0, 
+    -fdiagnostics-color=always, 
+    -Wall, 
+    -Wextra, 
+    -Weverything, 
+    -Wno-padded, 
+    -Wno-extra-semi-stmt, 
+    -Wno-switch-default, 
+    -Wno-unsafe-buffer-usage, 
+    -Wno-declaration-after-statement, 
+    -Wno-switch-enum
+  ]

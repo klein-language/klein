@@ -33,6 +33,8 @@ The default compiler is `clang`, but any C compiler can be used by passing it to
 make install CC=gcc
 ```
 
+Klein is written using only standard C without compiler extensions, so it can be compiled with any C compiler.
+
 The default location for the executable is `/usr/bin`, which can be set with `LOCATION`:
 
 ```bash

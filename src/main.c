@@ -29,12 +29,42 @@
  * - `parse()` from `parser.h`
  * - `evaluate()` from `runner.h`
  */
-PRIVATE Result runFile(String filePath) {
+PRIVATE Result runFile(int numberOfArguments, String* arguments) {
+	if (numberOfArguments < 2) {
+		return ERROR_INTERNAL;
+	}
+
+	bool usingShorthand = true;
+	String filePath = arguments[1];
+	if (strcmp(filePath, "run") == 0 && numberOfArguments > 2) {
+		filePath = arguments[2];
+		usingShorthand = false;
+	}
+
+	if (!fileExists(filePath)) {
+		if (usingShorthand) {
+			fprintf(
+				stderr,
+				"\n%s The command %s %s requires a file to run.\nIf you meant to run a klein file called \"run\", it doesn't exist.\nRun %s %s for more information.\n\n",
+				STYLE("Error:", RED, BOLD),
+				STYLE("klein", PURPLE, BOLD),
+				STYLE("run", BLUE, BOLD),
+				STYLE("klein", PURPLE, BOLD),
+				STYLE("help", BLUE, BOLD));
+		} else {
+			fprintf(
+				stderr,
+				"\n%s The file \"%s\" doesn't exist.",
+				STYLE("Error:", RED, BOLD),
+				filePath);
+		}
+		return ERROR_INTERNAL;
+	}
 
 	// Not a .klein file
 	char* dot = strrchr(filePath, '.');
-	if (!dot || strcmp(dot, ".klein")) {
-		fprintf(stderr, "\n%s Attempting to run a file that doesn't end with %s. Continue?: ", STYLE("Warning: ", YELLOW, BOLD), COLOR(".klein", CYAN));
+	if (!dot || strcmp(dot, ".kl")) {
+		fprintf(stderr, "\n%s Attempting to run a file that doesn't end with %s. Continue?: ", STYLE("Warning: ", YELLOW, BOLD), COLOR(".kl", CYAN));
 		String response = input();
 		if (!(strcmp(response, "Y") && strcmp(response, "y") && strcmp(response, "yes") && strcmp(response, "Yes") && strcmp(response, "YES"))) {
 			fprintf(stderr, "\n%s\n\n", STYLE("Cancelling.", RED, BOLD));
@@ -84,12 +114,32 @@ PRIVATE Result runFile(String filePath) {
  * an exit code. This handles the main logic of the program.
  */
 PRIVATE Result mainWrapper(int numberOfArguments, char** arguments) {
-	if (numberOfArguments == 1) {
+	if (numberOfArguments < 2) {
 		printHelp(false);
 		return OK;
 	};
 
-	return runFile(arguments[1]);
+	if (strcmp(arguments[1], "run") == 0) {
+		HANDLE_COMMAND_CONFLICTS("run", return runFile(numberOfArguments, arguments), numberOfArguments, arguments);
+	}
+
+	if (strcmp(arguments[1], "help") == 0) {
+		HANDLE_COMMAND_CONFLICTS("help", printHelp(false), numberOfArguments, arguments);
+		return OK;
+	}
+
+	if (fileExists(arguments[1])) {
+		return runFile(numberOfArguments, arguments);
+	}
+
+	fprintf(
+		stderr,
+		"\n%s No command or file called \"%s\" exists. Run %s %s for help.\n\n",
+		STYLE("Error:", RED, BOLD),
+		arguments[1],
+		STYLE("klein", PURPLE, BOLD),
+		STYLE("help", BLUE, BOLD));
+	return OK;
 }
 
 /**
@@ -98,10 +148,5 @@ PRIVATE Result mainWrapper(int numberOfArguments, char** arguments) {
  */
 int main(int numberOfArguments, char** arguments) {
 	Result attempt = mainWrapper(numberOfArguments, arguments);
-
-	if (attempt != OK) {
-		fprintf(stderr, "%s %s\n\n", STYLE("Error:", RED, BOLD), errorMessage(attempt));
-	}
-
 	return (int) attempt;
 }

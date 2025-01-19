@@ -1,0 +1,14 @@
+for number in 1.to(100) {
+	print(number, { newline = false });
+	print(" ", { newline = false });
+
+	if number.mod(3) == 0 {
+		print("Fizz", { newline = false });
+	};
+
+	if number.mod(5) == 0 {
+		print("Buzz", { newline = false });
+	};
+
+	print("");
+};

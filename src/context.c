@@ -131,7 +131,7 @@ Result getVariable(Scope scope, String name, Expression** output) {
 	return ERROR_REFERENCE_NONEXISTENT_VARIABLE;
 }
 
-Result enterNewScope() {
+Result enterNewScope(void) {
 	ScopeList children;
 	TRY(emptyScopeList(&children));
 
@@ -150,7 +150,7 @@ Result enterNewScope() {
 	return OK;
 }
 
-Result exitScope() {
+Result exitScope(void) {
 	if (CONTEXT->scope->parent == NULL) {
 		return ERROR_INTERNAL;
 	}

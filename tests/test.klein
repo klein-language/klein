@@ -1,8 +1,0 @@
-for number in 1.to(100) {
-	if number.mod(3) == 0 {
-		print("Fizz");
-	};
-	if number.mod(5) == 0 {
-		print("Buzz");
-	};
-};
