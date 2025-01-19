@@ -31,7 +31,7 @@
  */
 PRIVATE Result runFile(int numberOfArguments, String* arguments) {
 	if (numberOfArguments < 2) {
-		return ERROR_INTERNAL;
+		return error("Not enough arguments to run");
 	}
 
 	bool usingShorthand = true;
@@ -58,7 +58,7 @@ PRIVATE Result runFile(int numberOfArguments, String* arguments) {
 				STYLE("Error:", RED, BOLD),
 				filePath);
 		}
-		return ERROR_INTERNAL;
+		return error("Invalid command");
 	}
 
 	// Not a .klein file
@@ -148,5 +148,15 @@ PRIVATE Result mainWrapper(int numberOfArguments, char** arguments) {
  */
 int main(int numberOfArguments, char** arguments) {
 	Result attempt = mainWrapper(numberOfArguments, arguments);
-	return (int) attempt;
+	if (isError(attempt)) {
+		fprintf(stderr, "\n%s %s\n", STYLE("Error:", RED, BOLD), attempt.errorMessage);
+		FOR_EACH(String line, CONTEXT->errorStackTrace) {
+			fprintf(stderr, "\t\033[2mwhile %s\033[0m\n", line);
+		}
+		END;
+		fprintf(stderr, "\n");
+		return 1;
+	}
+
+	return 0;
 }

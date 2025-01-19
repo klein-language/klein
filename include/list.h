@@ -79,7 +79,7 @@ typedef char Char;
                                                                                      \
 	Result pop##type##List(type##List* list) {                                       \
 		if (list->size == 0) {                                                       \
-			return ERROR_INTERNAL;                                                   \
+			return error("Attempted to pop from an empty list");                     \
 		}                                                                            \
                                                                                      \
 		for (size_t index = 0; index < list->size - 1; index++) {                    \

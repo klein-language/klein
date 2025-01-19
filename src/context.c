@@ -27,37 +27,36 @@
  * an error is returned.
  */
 Result declareNewVariable(Scope* scope, Declaration declaration) {
-	DEBUG_START("Declaring", "new variable \"%s\"", declaration.name);
+	DEBUG_START("Declaring new variable \"%s\"", declaration.name);
 	// Error - null scope
 	if (scope == NULL) {
-		return ERROR_INTERNAL;
+		RETURN_ERROR("Attempted to declare a variable to a NULL scope.");
 	}
 
 	// Error - Variable already exists
 	Expression* value = NULL;
-	if (getVariable(*scope, declaration.name, &value) == OK) {
-		DEBUG_ERROR("Variable \"%s\", already exists, declaration.name");
-		return ERROR_DUPLICATE_VARIABLE;
+	if (isOk(getVariable(*scope, declaration.name, &value))) {
+		RETURN_ERROR("Duplicate variable declaration for \"%s\"", declaration.name);
 	}
 
 	// Add the variable
 	TRY(appendToDeclarationList(&scope->variables, declaration));
 
 	// Return ok
-	DEBUG_END("Declaring new variable \"%s\"", declaration.name);
+	DEBUG_END;
 	return OK;
 }
 
 Result reassignVariable(Scope* scope, Declaration declaration) {
 	// Error - null scope
 	if (scope == NULL) {
-		return ERROR_INTERNAL;
+		RETURN_ERROR("Attempted to reassign a variable in a NULL scope");
 	}
 
 	// Variable already exists
 	Expression* value = NULL;
-	if (getVariable(*scope, declaration.name, &value) != OK) {
-		return ERROR_REFERENCE_NONEXISTENT_VARIABLE;
+	if (isError(getVariable(*scope, declaration.name, &value))) {
+		RETURN_ERROR("Attempted to reference a variable called \"%s\", but no variable with that name exists where it was referenced.", declaration.name);
 	}
 
 	// Add the variable
@@ -68,11 +67,11 @@ Result reassignVariable(Scope* scope, Declaration declaration) {
 }
 
 Result setVariable(Scope* scope, Declaration declaration) {
-	DEBUG_LOG("Setting", "variable \"%s\" to a %s", declaration.name, expressionTypeName(declaration.value.type));
+	DEBUG_START("Setting variable \"%s\" to a %s", declaration.name, expressionTypeName(declaration.value.type));
 
 	// Error - null scope
 	if (scope == NULL) {
-		return ERROR_INTERNAL;
+		RETURN_ERROR("Attempted to set a variable in a NULL scope");
 	}
 
 	// Variable already exists
@@ -87,6 +86,7 @@ Result setVariable(Scope* scope, Declaration declaration) {
 	}
 
 	// Return ok
+	DEBUG_END;
 	return OK;
 }
 
@@ -114,12 +114,12 @@ Result setVariable(Scope* scope, Declaration declaration) {
  * an error is returned.
  */
 Result getVariable(Scope scope, String name, Expression** output) {
-	DEBUG_LOG("Resolving", "variable \"%s\"", name);
+	DEBUG_START("Resolving variable \"%s\"", name);
 	Scope* current = &scope;
 	while (current != NULL) {
 		FOR_EACH_REF(Declaration * variable, current->variables) {
 			if (strcmp(variable->name, name) == 0) {
-				DEBUG_LOG("Resolved", "variable %s to a %s", name, expressionTypeName(variable->value.type));
+				DEBUG_END;
 				RETURN_OK(output, &variable->value);
 			}
 		}
@@ -127,8 +127,7 @@ Result getVariable(Scope scope, String name, Expression** output) {
 		current = current->parent;
 	}
 
-	DEBUG_ERROR("Variable \"%s\" couldn't be resolved", name);
-	return ERROR_REFERENCE_NONEXISTENT_VARIABLE;
+	RETURN_ERROR("Attempted to reference a variable called \"%s\", but no variable with that name exists where it was referenced.", name);
 }
 
 Result enterNewScope(void) {
@@ -152,7 +151,7 @@ Result enterNewScope(void) {
 
 Result exitScope(void) {
 	if (CONTEXT->scope->parent == NULL) {
-		return ERROR_INTERNAL;
+		RETURN_ERROR("Attempted to exit the global scope.");
 	}
 
 	CONTEXT->scope = CONTEXT->scope->parent;
@@ -186,9 +185,13 @@ Result newContext(Context* output) {
 		.variables = variables,
 	};
 
+	StringList stackTrace;
+	TRY(emptyStringList(&stackTrace));
+
 	*output = (Context) {
 		.globalScope = globalScope,
 		.debugIndent = 0,
+		.errorStackTrace = stackTrace,
 	};
 	output->scope = &output->globalScope;
 

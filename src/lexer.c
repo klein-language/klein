@@ -205,8 +205,7 @@ PRIVATE Result getNextToken(String sourceCode, Token* output) {
 	}
 
 	// Unrecognized
-	fprintf(stderr, "%s\n", sourceCode);
-	return ERROR_UNRECOGNIZED_TOKEN;
+	return error("Unrecognized token");
 }
 
 /**
@@ -257,6 +256,97 @@ Result tokenize(String sourceCode, TokenList* output) {
 	}
 
 	return OK;
+}
+
+String tokenTypeName(TokenType type) {
+	switch (type) {
+		case TOKEN_TYPE_KEYWORD_AND:
+			return "keyword and";
+		case TOKEN_TYPE_KEYWORD_OR:
+			return "keyword or";
+		case TOKEN_TYPE_KEYWORD_NOT:
+			return "keyword not";
+		case TOKEN_TYPE_KEYWORD_FUNCTION:
+			return "keyword function";
+		case TOKEN_TYPE_KEYWORD_IF:
+			return "keyword if";
+		case TOKEN_TYPE_KEYWORD_ELSE:
+			return "keyword else";
+		case TOKEN_TYPE_KEYWORD_IN:
+			return "keyword in";
+		case TOKEN_TYPE_KEYWORD_FOR:
+			return "keyword in";
+		case TOKEN_TYPE_KEYWORD_DO:
+			return "keyword do";
+		case TOKEN_TYPE_KEYWORD_WHILE:
+			return "keyword while";
+		case TOKEN_TYPE_KEYWORD_TYPE:
+			return "keyword while";
+		case TOKEN_TYPE_KEYWORD_LET:
+			return "keyword let";
+		case TOKEN_TYPE_KEYWORD_FALSE:
+			return "keyword let";
+		case TOKEN_TYPE_KEYWORD_TRUE:
+			return "keyword let";
+		case TOKEN_TYPE_KEYWORD_RETURN:
+			return "keyword return";
+		case TOKEN_TYPE_LEFT_BRACE:
+			return "left brace";
+		case TOKEN_TYPE_LEFT_BRACKET:
+			return "left bracket";
+		case TOKEN_TYPE_LEFT_PARENTHESIS:
+			return "left parenthesis";
+		case TOKEN_TYPE_RIGHT_BRACE:
+			return "right brace";
+		case TOKEN_TYPE_RIGHT_BRACKET:
+			return "right bracket";
+		case TOKEN_TYPE_RIGHT_PARENTHESIS:
+			return "right parenthesis";
+		case TOKEN_TYPE_ASTERISK:
+			return "asterisk";
+		case TOKEN_TYPE_FORWARD_SLASH:
+			return "forward slash";
+		case TOKEN_TYPE_PLUS:
+			return "plus";
+		case TOKEN_TYPE_MINUS:
+			return "minus";
+		case TOKEN_TYPE_LESS_THAN:
+			return "less than";
+		case TOKEN_TYPE_GREATER_THAN:
+			return "greater than";
+		case TOKEN_TYPE_LESS_THAN_OR_EQUAL_TO:
+			return "less than or equal to";
+		case TOKEN_TYPE_GREATER_THAN_OR_EQUAL_TO:
+			return "greater than or equal to";
+		case TOKEN_TYPE_COMMA:
+			return "comma";
+		case TOKEN_TYPE_DOUBLE_EQUALS:
+			return "double equals";
+		case TOKEN_TYPE_NOT_EQUAL:
+			return "not equals";
+		case TOKEN_TYPE_CARET:
+			return "caret";
+		case TOKEN_TYPE_COLON:
+			return "colon";
+		case TOKEN_TYPE_DOT:
+			return "dot";
+		case TOKEN_TYPE_EQUALS:
+			return "equals";
+		case TOKEN_TYPE_SEMICOLON:
+			return "semicolon";
+		case TOKEN_TYPE_STRING:
+			return "string";
+		case TOKEN_TYPE_NUMBER:
+			return "number";
+		case TOKEN_TYPE_IDENTIFIER:
+			return "variable name";
+		case TOKEN_TYPE_COMMENT:
+			return "comment";
+		case TOKEN_TYPE_WHITESPACE:
+			return "whitespace";
+		case TOKEN_TYPE_EOF:
+			return "end of file";
+	}
 }
 
 IMPLEMENT_LIST(Token)

@@ -96,4 +96,6 @@ DEFINE_LIST(Token)
  */
 Result tokenize(char* sourceCode, TokenList* output);
 
+String tokenTypeName(TokenType type);
+
 #endif

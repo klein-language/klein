@@ -22,7 +22,6 @@ typedef struct {
 } Block;
 
 typedef enum {
-	EXPRESSION_BOOLEAN,
 	EXPRESSION_BINARY,
 	EXPRESSION_FUNCTION,
 	EXPRESSION_BLOCK,
@@ -97,7 +96,7 @@ typedef struct {
 
 typedef enum {
 	UNARY_OPERATION_NOT,
-	UNARY_OPERATION_FUNCTION_CALL,
+	UNARY_OPERATION_FUNCTION_CALL
 } UnaryOperationType;
 
 struct TypeDeclaration {
@@ -178,7 +177,7 @@ struct Object {
 typedef enum {
 	STATEMENT_DECLARATION,
 	STATEMENT_EXPRESSION,
-	STATEMENT_RETURN,
+	STATEMENT_RETURN
 } StatementType;
 
 typedef struct {

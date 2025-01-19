@@ -4,7 +4,7 @@
 Result typeOf(Expression expression, Type* output) {
 	switch (expression.type) {
 		default: {
-			return ERROR_NULL;
+			RETURN_ERROR("");
 		}
 	}
 }

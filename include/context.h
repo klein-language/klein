@@ -19,6 +19,7 @@ struct Context {
 	Scope* scope;
 	Scope globalScope;
 	int debugIndent;
+	StringList errorStackTrace;
 };
 
 /**

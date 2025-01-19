@@ -40,50 +40,15 @@ typedef char* String;
 #define UNDERLINE "4"
 #endif
 
-#ifdef DEBUG_ON
-#define DEBUG_START(action, ...)                                    \
-	for (int indent = 0; indent < CONTEXT->debugIndent; indent++) { \
-		fprintf(stderr, "\033[0;3%dm│ ", indent % 7 + 1);           \
-	}                                                               \
-	fprintf(stderr, "%s ", STYLE(action, GREEN, BOLD));             \
-	fprintf(stderr, __VA_ARGS__);                                   \
-	fprintf(stderr, "\n");                                          \
-	CONTEXT->debugIndent++
-#define DEBUG_END(...)                                              \
-	CONTEXT->debugIndent--;                                         \
-	for (int indent = 0; indent < CONTEXT->debugIndent; indent++) { \
-		fprintf(stderr, "\033[0;3%dm│ ", indent % 7 + 1);           \
-	}                                                               \
-	fprintf(stderr, "%s ", STYLE("Done", GREEN, BOLD));             \
-	fprintf(stderr, __VA_ARGS__);                                   \
-	fprintf(stderr, "\n")
-#define DEBUG_LOG(action, ...)                                      \
-	for (int indent = 0; indent < CONTEXT->debugIndent; indent++) { \
-		fprintf(stderr, "\033[0;3%dm│ ", indent % 7 + 1);           \
-	}                                                               \
-	fprintf(stderr, "%s ", STYLE(action, GREEN, BOLD));             \
-	fprintf(stderr, __VA_ARGS__);                                   \
-	fprintf(stderr, "\n")
-#define DEBUG_LOGN(action, ...)                                     \
-	for (int indent = 0; indent < CONTEXT->debugIndent; indent++) { \
-		fprintf(stderr, "\033[0;3%dm│ ", indent % 7 + 1);           \
-	}                                                               \
-	fprintf(stderr, "%s ", STYLE(action, GREEN, BOLD));             \
-	fprintf(stderr, __VA_ARGS__);
-#define DEBUG_ERROR(...)                                            \
-	for (int indent = 0; indent < CONTEXT->debugIndent; indent++) { \
-		fprintf(stderr, "\033[0;3%dm│ ", indent % 7 + 1);           \
-	}                                                               \
-	fprintf(stderr, "%s ", STYLE("Error", RED, BOLD));              \
-	fprintf(stderr, __VA_ARGS__);                                   \
-	fprintf(stderr, "\n")
-#else
-#define DEBUG_START(action, ...)
-#define DEBUG_END(...)
-#define DEBUG_LOG(action, ...)
-#define DEBUG_LOGN(action, ...)
-#define DEBUG_ERROR(...)
-#endif
+#define DEBUG_START(...)                                             \
+	do {                                                             \
+		int size = snprintf(NULL, 0, __VA_ARGS__);                   \
+		String buffer = malloc((unsigned long) size + 1);            \
+		sprintf(buffer, __VA_ARGS__);                                \
+		TRY(prependToStringList(&CONTEXT->errorStackTrace, buffer)); \
+	} while (0)
+
+#define DEBUG_END TRY(popStringList(&CONTEXT->errorStackTrace));
 
 #define MAX(x, y) (((x) >= (y)) ? (x) : (y))
 #define MIN(x, y) (((x) <= (y)) ? (x) : (y))

@@ -91,12 +91,8 @@ Result getNumber(Expression expression, double** output);
 Result listExpression(ExpressionList values, Expression* output);
 Result getList(Expression expression, ExpressionList** output);
 bool isList(Expression expression);
-
-#define FIELD(name, value) \
-	(Field) { .name = name, .value = value }
-
-#define OBJECT(...) \
-	do {            \
-	} while (0)
+Result booleanExpression(bool value, Expression* output);
+Result getBoolean(Expression expression, bool** output);
+bool isBoolean(Expression expression);
 
 #endif

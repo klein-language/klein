@@ -30,7 +30,7 @@
  */
 PRIVATE Result input(ExpressionList* arguments, Expression* output) {
 	if (arguments->size > 1) {
-		return ERROR_INVALID_ARGUMENTS;
+		RETURN_ERROR("Too many arguments passed to builtin function input(): Expected 0-1 but found %lu", arguments->size);
 	}
 
 	String defaultPrompt = "";
@@ -47,7 +47,7 @@ PRIVATE Result input(ExpressionList* arguments, Expression* output) {
 	String buffer = NULL;
 	size_t length = 0;
 	if (getline(&buffer, &length, stdin) < 0) {
-		return ERROR_INTERNAL;
+		RETURN_ERROR("The system failed to read from stdin.");
 	}
 	buffer[strlen(buffer) - 1] = '\0';
 
@@ -59,7 +59,7 @@ PRIVATE Result input(ExpressionList* arguments, Expression* output) {
 
 PRIVATE Result stringLength(ExpressionList* arguments, Expression* output) {
 	if (arguments->size != 1) {
-		return ERROR_INVALID_ARGUMENTS;
+		RETURN_ERROR("Incorrect number of arguments passed to builtin function String.length(): Expected 1 but found %lu", arguments->size);
 	}
 
 	Expression* expression = arguments->data;
@@ -78,7 +78,7 @@ PRIVATE Result stringLength(ExpressionList* arguments, Expression* output) {
 
 PRIVATE Result listAppend(ExpressionList* arguments, Expression* output) {
 	if (arguments->size != 2) {
-		return ERROR_INVALID_ARGUMENTS;
+		RETURN_ERROR("Incorrect number of arguments passed to builtin function List.append(): Expected 2 but found %lu", arguments->size);
 	}
 
 	Expression list = arguments->data[0];
@@ -107,15 +107,15 @@ PRIVATE Result expressionToString(Expression expression, Expression* output) {
 			// Integer
 			if (floor(*number) == *number) {
 				int len = snprintf(NULL, 0, "%d", (int) *number);
-				String result = malloc(len + 1);
-				snprintf(result, len + 1, "%d", (int) *number);
+				String result = malloc((unsigned long) len + 1);
+				snprintf(result, (unsigned long) len + 1, "%d", (int) *number);
 				TRY_LET(Expression, string, stringExpression, result);
 				RETURN_OK(output, string);
 			}
 
 			int len = snprintf(NULL, 0, "%f", *number);
-			String result = malloc(len + 1);
-			snprintf(result, len + 1, "%f", *number);
+			String result = malloc((unsigned long) len + 1);
+			snprintf(result, (unsigned long) len + 1, "%f", *number);
 
 			TRY_LET(Expression, string, stringExpression, result);
 			RETURN_OK(output, string);
@@ -144,25 +144,19 @@ Result expressionsAreEqual(Expression left, Expression right, Expression* output
 		if (isNumber(*leftValue) && isNumber(*rightValue)) {
 			TRY_LET(double*, leftNumber, getNumber, *leftValue);
 			TRY_LET(double*, rightNumber, getNumber, *rightValue);
-			Expression result = (Expression) {
-				.type = EXPRESSION_BOOLEAN,
-				.data = (ExpressionData) {
-					.boolean = *leftNumber == *rightNumber,
-				},
-			};
+			TRY_LET(Expression, result, booleanExpression, *leftNumber == *rightNumber);
 			RETURN_OK(output, result);
 		}
 
-		return ERROR_INVALID_OPERAND;
+		UNREACHABLE;
 	}
 
-	return ERROR_INVALID_OPERAND;
+	UNREACHABLE;
 }
 
 PRIVATE Result numberMod(ExpressionList* arguments, Expression* output) {
 	if (arguments->size != 2) {
-		DEBUG_ERROR("Passed %d arguments to Number.mod", arguments->size);
-		return ERROR_INVALID_ARGUMENTS;
+		RETURN_ERROR("Incorrect number of arguments passed to builtin function Number.mod(): Expected 2 but found %lu", arguments->size);
 	}
 
 	Expression* leftValue = &arguments->data[0];
@@ -208,9 +202,8 @@ PRIVATE Result numberMod(ExpressionList* arguments, Expression* output) {
 PRIVATE Result print(ExpressionList* arguments, Expression* output) {
 	SUPPRESS_UNUSED(output);
 
-	if (arguments->size < 1) {
-		DEBUG_ERROR("Passed %d arguments to print", arguments->size);
-		return ERROR_INVALID_ARGUMENTS;
+	if (arguments->size < 1 || arguments->size > 2) {
+		RETURN_ERROR("Incorrect number of arguments passed to builtin function print: Expected 1-2 but found %lu", arguments->size);
 	}
 
 	Object* options;
@@ -219,12 +212,7 @@ PRIVATE Result print(ExpressionList* arguments, Expression* output) {
 	Object defaultOptions;
 	FieldList fields;
 	TRY(emptyFieldList(&fields));
-	Expression trueExpression = (Expression) {
-		.type = EXPRESSION_BOOLEAN,
-		.data = (ExpressionData) {
-			.boolean = true,
-		},
-	};
+	TRY_LET(Expression, trueExpression, booleanExpression, true);
 	TRY(appendToFieldList(&fields, (Field) {.name = "newline", .value = trueExpression}));
 	defaultOptions = (Object) {
 		.fields = fields,
@@ -251,7 +239,7 @@ PRIVATE Result print(ExpressionList* arguments, Expression* output) {
 	}
 
 	if (printf("%s%s", *stringValue, newline) < 0) {
-		return ERROR_PRINT;
+		RETURN_ERROR("The system failed to print to stdout");
 	}
 
 	return OK;
@@ -278,5 +266,5 @@ Result getBuiltin(String name, BuiltinFunction* output) {
 		RETURN_OK(output, &numberMod);
 	}
 
-	return ERROR_INTERNAL;
+	RETURN_ERROR("Attempted to get a built-in function called \"%s\", but no built-in with that name exists.", name);
 }

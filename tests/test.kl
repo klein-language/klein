@@ -10,5 +10,5 @@ for number in 1.to(100) {
 		print("Buzz", { newline = false });
 	};
 
-	print("");
+	print("")
 };

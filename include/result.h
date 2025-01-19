@@ -5,36 +5,28 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-typedef enum {
-	OK,
-	ERROR_NULL,
-	ERROR_PRINT,
-	ERROR_DUPLICATE_VARIABLE,
-	ERROR_INVALID_ARGUMENTS,
-	ERROR_CALL_NON_FUNCTION,
-	ERROR_REFERENCE_NONEXISTENT_VARIABLE,
-	ERROR_UNEXPECTED_TOKEN,
-	ERROR_UNRECOGNIZED_TOKEN,
-	ERROR_INVALID_OPERAND,
-	ERROR_INTERNAL,
+typedef struct {
+	char* errorMessage;
 } Result;
 
-String errorMessage(Result error);
+bool isOk(Result result);
+bool isError(Result result);
+Result error(String message);
 
-#define TRY(expression__)         \
-	do {                          \
-		Result attempt__;         \
-		attempt__ = expression__; \
-		if (attempt__ != OK) {    \
-			return attempt__;     \
-		}                         \
+extern Result OK;
+
+#define TRY(expression__)                     \
+	do {                                      \
+		Result attempt__ = expression__;      \
+		if (attempt__.errorMessage != NULL) { \
+			return attempt__;                 \
+		}                                     \
 	} while (false)
 
 #define UNWRAP(expression__)                                                \
 	do {                                                                    \
-		Result attempt__;                                                   \
-		attempt__ = expression__;                                           \
-		if (attempt__ != OK) {                                              \
+		Result attempt__ = expression__;                                    \
+		if (attempt__.errorMessage != NULL) {                               \
 			fprintf(stderr, "Error: Attempted to unwrap an error value\n"); \
 			exit(1);                                                        \
 		}                                                                   \
@@ -52,13 +44,13 @@ String errorMessage(Result error);
  * Asserts that the given expression must be non-NULL. If it is `NULL`, an error
  * `Result` is returned from the current function.
  */
-#define ASSERT_NONNULL(expression__) \
-	do {                             \
-		void* memory;                \
-		memory = expression__;       \
-		if (memory == NULL) {        \
-			return ERROR_NULL;       \
-		}                            \
+#define ASSERT_NONNULL(expression__)                                \
+	do {                                                            \
+		void* memory;                                               \
+		memory = expression__;                                      \
+		if (memory == NULL) {                                       \
+			return error("A value that mustn't be null was null."); \
+		}                                                           \
 	} while (false)
 
 #define RETURN_OK(__output, __expression) \
@@ -67,6 +59,14 @@ String errorMessage(Result error);
 		return OK;                        \
 	} while (false)
 
-#define UNREACHABLE return ERROR_INTERNAL
+#define UNREACHABLE return error("Unreachable code was reached")
+
+#define RETURN_ERROR(...)                                     \
+	do {                                                      \
+		int size__ = snprintf(NULL, 0, __VA_ARGS__);          \
+		String buffer__ = malloc((unsigned long) size__ + 1); \
+		sprintf(buffer__, __VA_ARGS__);                       \
+		return error(buffer__);                               \
+	} while (false)
 
 #endif

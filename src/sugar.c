@@ -83,8 +83,7 @@ Result stringExpression(String value, Expression* output) {
  */
 Result getString(Expression expression, String** output) {
 	if (expression.type != EXPRESSION_OBJECT) {
-		DEBUG_ERROR("Attempted to convert a non-string to a string");
-		return ERROR_INTERNAL;
+		RETURN_ERROR("Attempted to interpret a %s as a string literal", expressionTypeName(expression.type));
 	}
 
 	return getObjectInternal(*expression.data.object, "string_value", (void**) output);
@@ -92,17 +91,22 @@ Result getString(Expression expression, String** output) {
 
 bool isString(Expression expression) {
 	String* output;
-	return getString(expression, &output) == OK;
+	return isOk(getString(expression, &output));
 }
 
 bool isNumber(Expression expression) {
 	double* output;
-	return getNumber(expression, &output) == OK;
+	return isOk(getNumber(expression, &output));
+}
+
+bool isBoolean(Expression expression) {
+	bool* output;
+	return isOk(getBoolean(expression, &output));
 }
 
 bool isList(Expression expression) {
 	ExpressionList* output;
-	return getList(expression, &output) == OK;
+	return isOk(getList(expression, &output));
 }
 
 /**
@@ -198,8 +202,7 @@ Result numberExpression(double value, Expression* output) {
  */
 Result getNumber(Expression expression, double** output) {
 	if (expression.type != EXPRESSION_OBJECT) {
-		DEBUG_ERROR("Attempted to convert a non-object to a number");
-		return ERROR_INTERNAL;
+		RETURN_ERROR("Attempted to interpret a %s as a number literal", expressionTypeName(expression.type));
 	}
 
 	return getObjectInternal(*expression.data.object, "number_value", (void**) output);
@@ -251,15 +254,51 @@ Result listExpression(ExpressionList values, Expression* output) {
 }
 
 Result getList(Expression expression, ExpressionList** output) {
-	DEBUG_START("Getting", "internal list value");
+	DEBUG_START("Getting internal list value");
 	if (expression.type != EXPRESSION_OBJECT) {
-		return ERROR_INTERNAL;
+		RETURN_ERROR("Attempted to interpret a %s as a list literal", expressionTypeName(expression.type));
 	}
 
 	TRY(getObjectInternal(*expression.data.object, "elements", (void**) output));
-	DEBUG_END("getting internal list value");
+	DEBUG_END;
 	return OK;
 }
 
-Result desugar(Expression expression, Expression* output) {
+Result booleanExpression(bool value, Expression* output) {
+
+	// Internals
+	InternalFieldList internals;
+	TRY(emptyInternalFieldList(&internals));
+	bool* heapValue = malloc(sizeof(bool));
+	*heapValue = value;
+	TRY(appendToInternalFieldList(&internals, (InternalField) {.name = "boolean_value", .value = heapValue}));
+
+	// Fields
+	FieldList fields;
+	TRY(emptyFieldList(&fields));
+
+	// Create object
+	Object* object = malloc(sizeof(Object));
+	ASSERT_NONNULL(object);
+	*object = (Object) {
+		.internals = internals,
+		.fields = fields,
+	};
+
+	Expression expression = (Expression) {
+		.type = EXPRESSION_OBJECT,
+		.data = (ExpressionData) {
+			.object = object,
+		},
+	};
+
+	RETURN_OK(output, expression);
+}
+
+Result getBoolean(Expression expression, bool** output) {
+	if (expression.type != EXPRESSION_OBJECT) {
+		RETURN_ERROR("Attempted to interpret a %s as a boolean literal", expressionTypeName(expression.type));
+	}
+
+	return getObjectInternal(*expression.data.object, "boolean_value", (void**) output);
 }
