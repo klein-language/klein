@@ -121,6 +121,27 @@ PRIVATE Result evaluateBinaryExpression(BinaryExpression binary, Value* output) 
 			TRY_LET(double* rightNumber, getNumber(right, &rightNumber), "getting the right-hand side of a <= expression as a number");
 			return booleanValue(*leftNumber <= *rightNumber, output);
 		}
+		case BINARY_OPERATION_LESS_THAN: {
+			TRY_LET(Value left, evaluateExpression(*binary.left, &left), "evaluating the left-hand side of a binary expression");
+			TRY_LET(Value right, evaluateExpression(*binary.right, &right), "evaluating the right-hand side of a binary expression");
+			TRY_LET(double* leftNumber, getNumber(left, &leftNumber), "getting the left-hand side of a <= expression as a number");
+			TRY_LET(double* rightNumber, getNumber(right, &rightNumber), "getting the right-hand side of a <= expression as a number");
+			return booleanValue(*leftNumber < *rightNumber, output);
+		}
+		case BINARY_OPERATION_GREATER_THAN: {
+			TRY_LET(Value left, evaluateExpression(*binary.left, &left), "evaluating the left-hand side of a binary expression");
+			TRY_LET(Value right, evaluateExpression(*binary.right, &right), "evaluating the right-hand side of a binary expression");
+			TRY_LET(double* leftNumber, getNumber(left, &leftNumber), "getting the left-hand side of a <= expression as a number");
+			TRY_LET(double* rightNumber, getNumber(right, &rightNumber), "getting the right-hand side of a <= expression as a number");
+			return booleanValue(*leftNumber > *rightNumber, output);
+		}
+		case BINARY_OPERATION_GREATER_THAN_OR_EQUAL_TO: {
+			TRY_LET(Value left, evaluateExpression(*binary.left, &left), "evaluating the left-hand side of a binary expression");
+			TRY_LET(Value right, evaluateExpression(*binary.right, &right), "evaluating the right-hand side of a binary expression");
+			TRY_LET(double* leftNumber, getNumber(left, &leftNumber), "getting the left-hand side of a <= expression as a number");
+			TRY_LET(double* rightNumber, getNumber(right, &rightNumber), "getting the right-hand side of a <= expression as a number");
+			return booleanValue(*leftNumber >= *rightNumber, output);
+		}
 		case BINARY_OPERATION_PLUS: {
 			TRY_LET(Value left, evaluateExpression(*binary.left, &left), "evaluating the left-hand side of a binary expression");
 			TRY_LET(Value right, evaluateExpression(*binary.right, &right), "evaluating the right-hand side of a binary expression");
@@ -156,13 +177,6 @@ PRIVATE Result evaluateBinaryExpression(BinaryExpression binary, Value* output) 
 			TRY_LET(double* rightNumber, getNumber(right, &rightNumber), "getting the right-hand side of a + expression as a number");
 			return numberValue(pow(*leftNumber, *rightNumber), output);
 		}
-		case BINARY_OPERATION_ASSIGN: {
-			if (binary.left->type != EXPRESSION_IDENTIFIER) {
-				RETURN_ERROR("Attempted to assign to non-identifier");
-			}
-			TRY_LET(Value right, evaluateExpression(*binary.right, &right), "evaluating the right-hand side of a binary expression");
-			return reassignVariable(CONTEXT->scope, (ScopeDeclaration) {.name = binary.left->data.identifier, .value = right});
-		}
 		case BINARY_OPERATION_EQUAL: {
 			TRY_LET(Value left, evaluateExpression(*binary.left, &left), "evaluating the left-hand side of a binary expression");
 			TRY_LET(Value right, evaluateExpression(*binary.right, &right), "evaluating the right-hand side of a binary expression");
@@ -175,9 +189,21 @@ PRIVATE Result evaluateBinaryExpression(BinaryExpression binary, Value* output) 
 			TRY_LET(bool* rightBoolean, getBoolean(right, &rightBoolean), "getting the left-hand side of an \"and\" expression as a boolean");
 			return booleanValue(*leftBoolean && *rightBoolean, output);
 		}
+		case BINARY_OPERATION_OR: {
+			TRY_LET(Value left, evaluateExpression(*binary.left, &left), "evaluating the left-hand side of a binary expression");
+			TRY_LET(Value right, evaluateExpression(*binary.right, &right), "evaluating the right-hand side of a binary expression");
+			TRY_LET(bool* leftBoolean, getBoolean(left, &leftBoolean), "getting the left-hand side of an \"or\" expression as a boolean");
+			TRY_LET(bool* rightBoolean, getBoolean(right, &rightBoolean), "getting the left-hand side of an \"or\" expression as a boolean");
+			return booleanValue(*leftBoolean || *rightBoolean, output);
+		}
+		case BINARY_OPERATION_ASSIGN: {
+			if (binary.left->type != EXPRESSION_IDENTIFIER) {
+				RETURN_ERROR("Attempted to assign to non-identifier");
+			}
+			TRY_LET(Value right, evaluateExpression(*binary.right, &right), "evaluating the right-hand side of a binary expression");
+			return reassignVariable(CONTEXT->scope, (ScopeDeclaration) {.name = binary.left->data.identifier, .value = right});
+		}
 	}
-
-	RETURN_ERROR("binary");
 }
 
 PRIVATE Result evaluateFunction(Function expression, Value* output) {
@@ -236,9 +262,12 @@ PRIVATE Result evaluateUnaryExpression(UnaryExpression unaryExpression, Value* o
 
 			return nullValue(output);
 		}
+		case UNARY_OPERATION_NOT: {
+			TRY_LET(Value operand, evaluateExpression(unaryExpression.expression, &operand), "evaluating the operand of a unary not expression");
+			TRY_LET(bool* boolean, getBoolean(operand, &boolean), "getting the boolean value in a unary not expression");
+			return booleanValue(!*boolean, output);
+		}
 	}
-
-	RETURN_ERROR("here");
 }
 
 PRIVATE Result evaluateExpression(Expression expression, Value* output) {
