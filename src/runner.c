@@ -3,556 +3,266 @@
 #include "../include/context.h"
 #include "../include/parser.h"
 #include "../include/sugar.h"
-#include <stdlib.h>
-#include <string.h>
 
 static bool isReturning = false;
-static Expression returnValue;
+static Value returnValue;
 
-PRIVATE Result evaluateStatement(Statement* statement);
+PRIVATE Result evaluateStatement(Statement statement);
+PRIVATE Result evaluateExpression(Expression expression, Value* output);
 
-PRIVATE Result evaluateBlock(Block* block, Expression* output) {
-	DEBUG_START("Evaluating block");
+PRIVATE Result evaluateObject(Object object, Value* output) {
+	TRY_LET(ValueFieldList * list, emptyHeapValueFieldList(&list), "creating the field list for an object's value");
+	FOR_EACH(Field field, object.fields) {
+		TRY_LET(Value value, evaluateExpression(field.value, &value), "evaluating the value of the field \"%s\" on an object", field.name);
+		ValueField valueField = (ValueField) {
+			.name = field.name,
+			.value = value,
+		};
+		TRY(appendToValueFieldList(list, valueField), "appending to a value's field list");
+	}
+	END;
 
+	InternalList internals;
+	TRY(emptyInternalList(&internals), "creating an object's internals list");
+
+	Value result = (Value) {.fields = list, .internals = internals};
+	RETURN_OK(output, result);
+}
+
+PRIVATE Result evaluateBlock(Block block, Value* output) {
 	Scope* previousScope = CONTEXT->scope;
-	CONTEXT->scope = block->innerScope;
+	CONTEXT->scope = block.innerScope;
 
-	FOR_EACHP(Statement statement, block->statements) {
-		TRY(evaluateStatement(&statement));
-		if (isReturning) {
-			isReturning = false;
-			DEBUG_END;
-			RETURN_OK(output, returnValue);
-		}
+	FOR_EACHP(Statement statement, block.statements) {
+		TRY(evaluateStatement(statement), "evaluating a statement in a block");
 	}
 	END;
 
 	CONTEXT->scope = previousScope;
 
-	Expression expression = (Expression) {
-		.type = EXPRESSION_BLOCK,
-		.data = (ExpressionData) {
-			.block = block,
-		},
-	};
-
-	DEBUG_END;
-	RETURN_OK(output, expression);
+	return nullValue(output);
 }
 
-PRIVATE Result evaluateExpression(Expression* expression, Expression* output) {
-	DEBUG_START("Evaluating expression");
+PRIVATE Result evaluateList(ExpressionList list, Value* output) {
+	ValueList elements;
+	TRY(emptyValueList(&elements), "creating a list literal's element list");
+	FOR_EACH(Expression element, list) {
+		TRY_LET(Value value, evaluateExpression(element, &value), "evaluating an element of a list literal");
+		TRY(appendToValueList(&elements, value), "appending a value to a list literal's elements");
+	}
+	END;
 
-	switch (expression->type) {
+	return listValue(elements, output);
+}
 
-		// Literals
-		case EXPRESSION_IDENTIFIER:
-		case EXPRESSION_TYPE:
-		case EXPRESSION_OBJECT:
-		case EXPRESSION_FUNCTION: {
-			DEBUG_START("Evaluating literal");
-			DEBUG_END;
-			DEBUG_END;
-			RETURN_OK(output, *expression);
+PRIVATE Result evaluateForLoop(ForLoop forLoop, Value* output) {
+	TRY_LET(Value list, evaluateExpression(forLoop.list, &list), "evaluating the list to iterate on in a forloop");
+	TRY_LET(String iterable, valueToString(list, &iterable), "");
+	TRY_LET(ValueList * elements, getList(list, &elements), "getting the elements of the list to iterate on in a for loop");
+
+	FOR_EACHP(Value value, elements) {
+		ScopeDeclaration declaration = (ScopeDeclaration) {
+			.name = forLoop.binding,
+			.value = value,
+		};
+		setVariable(forLoop.body.innerScope, declaration);
+		TRY_LET(Value blockValue, evaluateBlock(forLoop.body, &blockValue), "evaluating the body of a for loop");
+	}
+	END;
+
+	return nullValue(output);
+}
+
+PRIVATE Result evaluateWhileLoop(WhileLoop whileLoop, Value* output) {
+	while (true) {
+		TRY_LET(Value condition, evaluateExpression(whileLoop.condition, &condition), "evaluating the condition of a while loop");
+		TRY_LET(bool* conditionValue, getBoolean(condition, &conditionValue), "getting the boolean value of a while loop's condition");
+
+		if (!*conditionValue) {
+			break;
 		}
 
-		// Block
+		TRY_LET(Value blockValue, evaluateBlock(whileLoop.body, &blockValue), "evaluating the body of a while loop");
+	}
+
+	return nullValue(output);
+}
+
+PRIVATE Result evaluateIfExpression(IfExpression ifExpression, Value* output) {
+	TRY_LET(Value condition, evaluateExpression(ifExpression.condition, &condition), "evaluating the condition of an if-expression");
+	TRY_LET(bool* conditionValue, getBoolean(condition, &conditionValue), "getting the boolean value of an if-expression's condition");
+
+	if (*conditionValue) {
+		TRY_LET(Value blockValue, evaluateBlock(ifExpression.body, &blockValue), "evaluating the body of an if-expression");
+	}
+
+	return nullValue(output);
+}
+
+PRIVATE Result evaluateBinaryExpression(BinaryExpression binary, Value* output) {
+	switch (binary.operation) {
+		case BINARY_OPERATION_DOT: {
+			TRY_LET(Value left, evaluateExpression(*binary.left, &left), "evaluating the left-hand side of a field access");
+			TRY_LET(Value * value, getValueField(left, binary.right->data.identifier, &value), "getting the field \"%s\" on an object", binary.right->data.identifier);
+			Value* this = malloc(sizeof(Value));
+			*this = left;
+			TRY(appendToInternalList(&value->internals, (Internal) {.key = INTERNAL_KEY_THIS_OBJECT, .value = this}), "setting the this-object for a field");
+			RETURN_OK(output, *value);
+		}
+		case BINARY_OPERATION_LESS_THAN_OR_EQUAL_TO: {
+			TRY_LET(Value left, evaluateExpression(*binary.left, &left), "evaluating the left-hand side of a binary expression");
+			TRY_LET(Value right, evaluateExpression(*binary.right, &right), "evaluating the right-hand side of a binary expression");
+			TRY_LET(double* leftNumber, getNumber(left, &leftNumber), "getting the left-hand side of a <= expression as a number");
+			TRY_LET(double* rightNumber, getNumber(right, &rightNumber), "getting the right-hand side of a <= expression as a number");
+			return booleanValue(*leftNumber <= *rightNumber, output);
+		}
+		case BINARY_OPERATION_PLUS: {
+			TRY_LET(Value left, evaluateExpression(*binary.left, &left), "evaluating the left-hand side of a binary expression");
+			TRY_LET(Value right, evaluateExpression(*binary.right, &right), "evaluating the right-hand side of a binary expression");
+			TRY_LET(double* leftNumber, getNumber(left, &leftNumber), "getting the left-hand side of a + expression as a number");
+			TRY_LET(double* rightNumber, getNumber(right, &rightNumber), "getting the right-hand side of a + expression as a number");
+			return numberValue(*leftNumber + *rightNumber, output);
+		}
+		case BINARY_OPERATION_ASSIGN: {
+			if (binary.left->type != EXPRESSION_IDENTIFIER) {
+				RETURN_ERROR("Attempted to assign to non-identifier");
+			}
+			TRY_LET(Value right, evaluateExpression(*binary.right, &right), "evaluating the right-hand side of a binary expression");
+			return reassignVariable(CONTEXT->scope, (ScopeDeclaration) {.name = binary.left->data.identifier, .value = right});
+		}
+	}
+
+	RETURN_ERROR("binary");
+}
+
+PRIVATE Result evaluateFunction(Function expression, Value* output) {
+	return functionValue(expression, output);
+}
+
+PRIVATE Result evaluateUnaryExpression(UnaryExpression unaryExpression, Value* output) {
+	switch (unaryExpression.operation.type) {
+		case UNARY_OPERATION_FUNCTION_CALL: {
+			// Builtin
+			if (unaryExpression.expression.type == EXPRESSION_IDENTIFIER && strcmp(unaryExpression.expression.data.identifier, "builtin") == 0) {
+				TRY_LET(BuiltinFunction builtin, getBuiltin(unaryExpression.operation.data.functionCall.data[0].data.string, &builtin), "getting a builtin function");
+				return builtinFunctionToValue(builtin, output);
+			}
+
+			// Not builtin()
+			TRY_LET(Value functionToCall, evaluateExpression(unaryExpression.expression, &functionToCall), "evaluting the function to call in a function call expression");
+
+			// Builtin function like `print()`
+			if (isBuiltinFunction(functionToCall)) {
+				UNWRAP_LET(BuiltinFunction builtin, getValueInternal(functionToCall, INTERNAL_KEY_BUILTIN_FUNCTION, (void**) &builtin));
+				TRY_LET(ValueList arguments, emptyValueList(&arguments), "creating a builtin function call's argument list");
+				if (hasInternal(functionToCall, INTERNAL_KEY_THIS_OBJECT)) {
+					UNWRAP_LET(Value * this, getValueInternal(functionToCall, INTERNAL_KEY_THIS_OBJECT, (void**) &this));
+					TRY(appendToValueList(&arguments, *this), "appending to a builtin function call's argument list");
+				}
+				FOR_EACH(Expression argumentExpression, unaryExpression.operation.data.functionCall) {
+					TRY_LET(Value argument, evaluateExpression(argumentExpression, &argument), "evaluating an argument to a function call");
+					TRY(appendToValueList(&arguments, argument), "appending to a builtin function call's argument list");
+				}
+				END;
+				return (*builtin)(&arguments, output);
+			}
+
+			// Regular function
+			TRY_LET(Function * function, getFunction(functionToCall, &function), "getting a function call's operand as a function");
+
+			// Arguments
+			if (function->parameters.size != unaryExpression.operation.data.functionCall.size) {
+				RETURN_ERROR("Incorrect number of arguments to function call: Expected %lu but received %lu", function->parameters.size, unaryExpression.operation.data.functionCall.size);
+			}
+			for (size_t parameterNumber = 0; parameterNumber < function->parameters.size; parameterNumber++) {
+				TRY_LET(Value argument, evaluateExpression(unaryExpression.operation.data.functionCall.data[parameterNumber], &argument), "evaluating an argument to a function call");
+				TRY(setVariable(function->body.innerScope, (ScopeDeclaration) {.name = function->parameters.data[parameterNumber].name, .value = argument}), "passing the argument of the function parameter %s", function->parameters.data[parameterNumber].name);
+			}
+
+			// Body
+			TRY_LET(Value result, evaluateBlock(function->body, &result), "evaluating the body of a function when calling it");
+
+			// Return
+			if (isReturning) {
+				isReturning = false;
+				TRY_LET(String returning, valueToString(returnValue, &returning), "");
+				RETURN_OK(output, returnValue);
+			}
+
+			return nullValue(output);
+		}
+	}
+
+	RETURN_ERROR("here");
+}
+
+PRIVATE Result evaluateExpression(Expression expression, Value* output) {
+	switch (expression.type) {
+		case EXPRESSION_OBJECT: {
+			return evaluateObject(*expression.data.object, output);
+		}
+		case EXPRESSION_IDENTIFIER: {
+			TRY_LET(Value * result, getVariable(*CONTEXT->scope, expression.data.identifier, &result), "evaluating an identifier");
+			RETURN_OK(output, *result);
+		}
 		case EXPRESSION_BLOCK: {
-			TRY(evaluateBlock(expression->data.block, output));
-			DEBUG_END;
-			return OK;
+			return evaluateBlock(*expression.data.block, output);
 		}
-
-		case EXPRESSION_BUILTIN_FUNCTION: {
-			DEBUG_END;
-			RETURN_OK(output, *expression);
-		}
-
-		// For loop
 		case EXPRESSION_FOR_LOOP: {
-			DEBUG_START("Evaluating for loop");
-
-			DEBUG_START("Evaluating for loop iterable");
-			TRY(evaluateExpression(&expression->data.forLoop->list, &expression->data.forLoop->list));
-			if (expression->data.forLoop->list.type == EXPRESSION_IDENTIFIER) {
-				Expression* value;
-				TRY(getVariable(*CONTEXT->scope, expression->data.forLoop->list.data.identifier, &value));
-				expression->data.forLoop->list = *value;
-			}
-			TRY_LET(ExpressionList*, list, getList, expression->data.forLoop->list);
-			DEBUG_END;
-
-			DEBUG_START("Evaluating for loop body");
-			FOR_EACHP(Expression value, list) {
-				Declaration declaration = (Declaration) {
-					.name = expression->data.forLoop->binding,
-					.value = value,
-				};
-				setVariable(expression->data.forLoop->body.innerScope, declaration);
-				TRY_LET(Expression, blockValue, evaluateBlock, &expression->data.forLoop->body);
-			}
-			END;
-			DEBUG_END;
-
-			Expression null = (Expression) {
-				.type = EXPRESSION_IDENTIFIER,
-				.data = (ExpressionData) {
-					.identifier = "null",
-				},
-			};
-			DEBUG_END;
-			DEBUG_END;
-			RETURN_OK(output, null);
+			return evaluateForLoop(*expression.data.forLoop, output);
 		}
-
-		// While loop
 		case EXPRESSION_WHILE_LOOP: {
-			DEBUG_START("Evaluating while loop");
-
-			while (true) {
-				TRY_LET(Expression, condition, evaluateExpression, &expression->data.whileLoop->condition);
-
-				if (!isBoolean(condition)) {
-					RETURN_ERROR("While loop condition must be a boolean");
-				}
-
-				if (!condition.data.boolean) {
-					break;
-				}
-
-				DEBUG_START("Evaluating while loop body");
-				TRY_LET(Expression, blockValue, evaluateBlock, &expression->data.whileLoop->body);
-				DEBUG_END;
-			}
-
-			Expression null = (Expression) {
-				.type = EXPRESSION_IDENTIFIER,
-				.data = (ExpressionData) {
-					.identifier = "null",
-				},
-			};
-			DEBUG_END;
-			DEBUG_END;
-			RETURN_OK(output, null);
+			return evaluateWhileLoop(*expression.data.whileLoop, output);
 		}
-
-		// While loop
 		case EXPRESSION_IF: {
-			DEBUG_START("Evaluating if expression");
-
-			TRY_LET(Expression, condition, evaluateExpression, &expression->data.whileLoop->condition);
-
-			if (!isBoolean(condition)) {
-				RETURN_ERROR("If expression condition isn't a boolean");
-			}
-
-			if (condition.data.boolean) {
-				DEBUG_START("Evaluating if expression body");
-				TRY_LET(Expression, blockValue, evaluateBlock, &expression->data.whileLoop->body);
-				DEBUG_END;
-			}
-
-			Expression null = (Expression) {
-				.type = EXPRESSION_IDENTIFIER,
-				.data = (ExpressionData) {
-					.identifier = "null",
-				},
-			};
-			DEBUG_END;
-			DEBUG_END;
-			RETURN_OK(output, null);
+			return evaluateIfExpression(*expression.data.ifExpression, output);
 		}
-
-		// Unary expressions
-		case EXPRESSION_UNARY: {
-			DEBUG_START("Evaluating unary expression");
-			UnaryExpression* unary = expression->data.unary;
-			DEBUG_START("Evaluating operand of unary expression");
-			TRY_LET(Expression, inner, evaluateExpression, &unary->expression);
-			DEBUG_END;
-			switch (unary->operation.type) {
-
-				// Function call
-				case UNARY_OPERATION_FUNCTION_CALL: {
-					DEBUG_START("Evaluating function call");
-					switch (inner.type) {
-
-						// Calling a regular function
-						case EXPRESSION_FUNCTION: {
-							DEBUG_START("Evaluating a literal function call");
-							if (inner.data.function.thisObject != NULL) {
-								Expression* thisObject = inner.data.function.thisObject;
-								TRY(prependToExpressionList(&unary->operation.data.functionCall, *thisObject));
-								inner.data.function.thisObject = NULL;
-							}
-							DEBUG_START("Setting function call arguments");
-							for (size_t parameterNumber = 0; parameterNumber < inner.data.function.parameters.size; parameterNumber++) {
-								if (parameterNumber >= unary->operation.data.functionCall.size) {
-									RETURN_ERROR("Not enough arguments for function call: expected %lu but found %lu", inner.data.function.parameters.size, unary->operation.data.functionCall.size);
-								}
-								Declaration declaration = (Declaration) {
-									.name = inner.data.function.parameters.data[parameterNumber].name,
-									.value = unary->operation.data.functionCall.data[parameterNumber],
-								};
-								TRY(setVariable(inner.data.function.body.innerScope, declaration));
-							}
-							DEBUG_END;
-							TRY(evaluateBlock(&inner.data.function.body, output));
-							DEBUG_END;
-							DEBUG_END;
-							DEBUG_END;
-							DEBUG_END;
-							return OK;
-						}
-
-						case EXPRESSION_BUILTIN_FUNCTION: {
-							bool hadThisObject = false;
-							if (inner.data.builtinFunction.thisObject != NULL) {
-								TRY(prependToExpressionList(&unary->operation.data.functionCall, *inner.data.builtinFunction.thisObject));
-								inner.data.builtinFunction.thisObject = NULL;
-								hadThisObject = true;
-							}
-							TRY(inner.data.builtinFunction.function(&unary->operation.data.functionCall, output));
-
-							if (hadThisObject) {
-								TRY(popExpressionList(&unary->operation.data.functionCall));
-							}
-
-							DEBUG_END;
-							DEBUG_END;
-							DEBUG_END;
-							return OK;
-						}
-
-						// Calling an identifier such as `name()`
-						case EXPRESSION_IDENTIFIER: {
-							DEBUG_START("Evaluating identifier function call");
-							String identifier = inner.data.identifier;
-
-							// Calling `builtin()`
-							if (strcmp(identifier, "builtin") == 0) {
-								DEBUG_START("Evaluating call to builtin()");
-
-								String* builtinName;
-								TRY(getString(unary->operation.data.functionCall.data[0], &builtinName));
-
-								TRY_LET(BuiltinFunction, function, getBuiltin, *builtinName);
-
-								Expression functionExpression = (Expression) {
-									.type = EXPRESSION_BUILTIN_FUNCTION,
-									.data = (ExpressionData) {
-										.builtinFunction = {
-											.function = function,
-											.thisObject = NULL,
-										},
-									},
-								};
-
-								DEBUG_END;
-								DEBUG_END;
-								DEBUG_END;
-								DEBUG_END;
-								DEBUG_END;
-								RETURN_OK(output, functionExpression);
-							}
-
-							// Not `builtin()`
-							TRY_LET(Expression*, value, getVariable, *CONTEXT->scope, identifier);
-
-							// Calling a function
-							if (value->type == EXPRESSION_FUNCTION) {
-								bool hadThisObject = false;
-								if (value->data.function.thisObject != NULL) {
-									TRY(prependToExpressionList(&unary->operation.data.functionCall, *inner.data.function.thisObject));
-									inner.data.function.thisObject = NULL;
-									hadThisObject = true;
-								}
-
-								DEBUG_START("Setting function call arguments");
-								for (size_t parameterNumber = 0; parameterNumber < value->data.function.parameters.size; parameterNumber++) {
-									if (parameterNumber >= unary->operation.data.functionCall.size) {
-										RETURN_ERROR("Not enough arguments for function call: expected %lu but found %lu", value->data.function.parameters.size, unary->operation.data.functionCall.size);
-									}
-									Declaration declaration = (Declaration) {
-										.name = value->data.function.parameters.data[parameterNumber].name,
-										.value = unary->operation.data.functionCall.data[parameterNumber],
-									};
-									TRY(setVariable(value->data.function.body.innerScope, declaration));
-								}
-								DEBUG_END;
-
-								DEBUG_START("Evaluating function call body");
-								TRY(evaluateBlock(&value->data.function.body, output));
-								if (hadThisObject) {
-									TRY(popExpressionList(&unary->operation.data.functionCall));
-								}
-								DEBUG_END;
-
-								DEBUG_END;
-								DEBUG_END;
-								DEBUG_END;
-								DEBUG_END;
-
-								if (isReturning) {
-									isReturning = false;
-									RETURN_OK(output, returnValue);
-								}
-
-								return OK;
-							}
-
-							// Calling a builtin function like `print()`
-							if (value->type == EXPRESSION_BUILTIN_FUNCTION) {
-								bool hadThisObject = false;
-								if (value->data.builtinFunction.thisObject != NULL) {
-									TRY(prependToExpressionList(&unary->operation.data.functionCall, *inner.data.builtinFunction.thisObject));
-									inner.data.builtinFunction.thisObject = NULL;
-									hadThisObject = true;
-								}
-								TRY(value->data.builtinFunction.function(&unary->operation.data.functionCall, output));
-								if (hadThisObject) {
-									TRY(popExpressionList(&unary->operation.data.functionCall));
-								}
-								DEBUG_END;
-								DEBUG_END;
-								DEBUG_END;
-								DEBUG_END;
-								return OK;
-							}
-
-							// Calling something else (like an identifier that resolves to a number)
-							RETURN_ERROR("Attempted to call a value that's not a function");
-						}
-
-						// Calling something else (like a number literal like `3()`)
-						default: {
-							DEBUG_END;
-							DEBUG_END;
-							DEBUG_END;
-							RETURN_ERROR("Attempted to call a value that's not a function");
-						}
-					}
-				}
-
-				// Negation
-				case UNARY_OPERATION_NOT: {
-					DEBUG_START("Evaluating unary not expression");
-
-					if (!isBoolean(inner)) {
-						RETURN_ERROR("Attempted to negate a value that's not a boolean");
-					}
-
-					bool result = !expression->data.boolean;
-					TRY_LET(Expression, resultExpression, booleanExpression, result);
-					DEBUG_END;
-					DEBUG_END;
-					RETURN_OK(output, resultExpression);
-				}
-			}
-		}
-
-		// Binary Expression
 		case EXPRESSION_BINARY: {
-			DEBUG_START("Evaluating binary expression");
-
-			DEBUG_START("Evaluating left-hand side of binary expression");
-			Expression left;
-			TRY(evaluateExpression(expression->data.binary.left, &left));
-			DEBUG_END;
-
-			DEBUG_START("Evaluating right-hand side of binary expression");
-			Expression right;
-			TRY(evaluateExpression(expression->data.binary.right, &right));
-			DEBUG_END;
-
-			switch (expression->data.binary.operation) {
-				// Field access
-				case BINARY_OPERATION_DOT: {
-					DEBUG_START("Evaluating field access");
-
-					Expression* leftPointer = &left;
-					if (leftPointer->type == EXPRESSION_IDENTIFIER) {
-						TRY(getVariable(*CONTEXT->scope, left.data.identifier, &leftPointer));
-					}
-
-					if (right.type != EXPRESSION_IDENTIFIER) {
-						RETURN_ERROR("The right-hand side of a field access must be a field name");
-					}
-
-					if (leftPointer->type != EXPRESSION_OBJECT) {
-						RETURN_ERROR("The left-hand side of a field access must be an object");
-					}
-					Expression* fieldValue;
-					TRY(getObjectField(*leftPointer->data.object, right.data.identifier, &fieldValue));
-					if (fieldValue->type == EXPRESSION_IDENTIFIER) {
-						TRY(getVariable(*CONTEXT->scope, fieldValue->data.identifier, &fieldValue));
-					}
-
-					if (fieldValue->type == EXPRESSION_FUNCTION) {
-						fieldValue->data.function.thisObject = malloc(sizeof(Expression));
-						*fieldValue->data.function.thisObject = *leftPointer;
-					} else if (fieldValue->type == EXPRESSION_BUILTIN_FUNCTION) {
-						fieldValue->data.builtinFunction.thisObject = malloc(sizeof(Expression));
-						*fieldValue->data.builtinFunction.thisObject = *leftPointer;
-					}
-
-					DEBUG_END;
-					DEBUG_END;
-					DEBUG_END;
-					RETURN_OK(output, *fieldValue);
-				}
-
-				case BINARY_OPERATION_PLUS: {
-					DEBUG_START("Evaluating addition operation");
-					Expression* leftPointer = &left;
-					if (leftPointer->type == EXPRESSION_IDENTIFIER) {
-						TRY(getVariable(*CONTEXT->scope, left.data.identifier, &leftPointer));
-					}
-					Expression* rightPointer = &right;
-					if (rightPointer->type == EXPRESSION_IDENTIFIER) {
-						TRY(getVariable(*CONTEXT->scope, right.data.identifier, &rightPointer));
-					}
-
-					if (isNumber(*leftPointer)) {
-						TRY_LET(double*, leftNumber, getNumber, *leftPointer);
-						TRY_LET(double*, rightNumber, getNumber, *rightPointer);
-						TRY_LET(Expression, sum, numberExpression, *leftNumber + *rightNumber);
-						DEBUG_END;
-						DEBUG_END;
-						DEBUG_END;
-						RETURN_OK(output, sum);
-					}
-
-					if (isString(*leftPointer)) {
-						TRY_LET(String*, leftString, getString, *leftPointer);
-						TRY_LET(String*, rightString, getString, *rightPointer);
-						String result = malloc(strlen(*leftString) + strlen(*rightString) + 1);
-						strcpy(result, *leftString);
-						strcat(result, *rightString);
-						TRY_LET(Expression, sum, stringExpression, result);
-						DEBUG_END;
-						DEBUG_END;
-						DEBUG_END;
-						RETURN_OK(output, sum);
-					}
-
-					DEBUG_END;
-					DEBUG_END;
-					DEBUG_END;
-
-					RETURN_ERROR("Attempted to add two unaddable values.");
-				}
-
-				case BINARY_OPERATION_LESS_THAN_OR_EQUAL_TO: {
-					DEBUG_START("Evaluating less than or equal to operation");
-
-					Expression* leftPointer = &left;
-					if (leftPointer->type == EXPRESSION_IDENTIFIER) {
-						TRY(getVariable(*CONTEXT->scope, left.data.identifier, &leftPointer));
-					}
-					Expression* rightPointer = &right;
-					if (rightPointer->type == EXPRESSION_IDENTIFIER) {
-						TRY(getVariable(*CONTEXT->scope, right.data.identifier, &rightPointer));
-					}
-
-					TRY_LET(double*, leftNumber, getNumber, *leftPointer);
-					TRY_LET(double*, rightNumber, getNumber, *rightPointer);
-					TRY_LET(Expression, result, booleanExpression, *leftNumber <= *rightNumber);
-					DEBUG_END;
-					DEBUG_END;
-					DEBUG_END;
-					RETURN_OK(output, result);
-				}
-
-				case BINARY_OPERATION_EQUAL: {
-					DEBUG_START("Evaluating equal to operation");
-
-					Expression* leftPointer = &left;
-					if (leftPointer->type == EXPRESSION_IDENTIFIER) {
-						TRY(getVariable(*CONTEXT->scope, left.data.identifier, &leftPointer));
-					}
-					Expression* rightPointer = &right;
-					if (rightPointer->type == EXPRESSION_IDENTIFIER) {
-						TRY(getVariable(*CONTEXT->scope, right.data.identifier, &rightPointer));
-					}
-
-					TRY_LET(Expression, result, expressionsAreEqual, *leftPointer, *rightPointer);
-
-					DEBUG_END;
-					DEBUG_END;
-					DEBUG_END;
-					RETURN_OK(output, result);
-				}
-
-				case BINARY_OPERATION_ASSIGN: {
-					DEBUG_START("Evaluating assignment");
-					Expression* rightPointer = &right;
-					if (rightPointer->type == EXPRESSION_IDENTIFIER) {
-						TRY(getVariable(*CONTEXT->scope, right.data.identifier, &rightPointer));
-					}
-					Declaration declaration = (Declaration) {
-						.name = left.data.identifier,
-						.value = *rightPointer,
-					};
-					TRY(reassignVariable(CONTEXT->scope, declaration));
-
-					Expression null = (Expression) {
-						.type = EXPRESSION_IDENTIFIER,
-						.data = (ExpressionData) {
-							.identifier = "null",
-						},
-					};
-					DEBUG_END;
-					DEBUG_END;
-					DEBUG_END;
-					RETURN_OK(output, null);
-				}
-				default: {
-					UNREACHABLE;
-				}
-			}
+			return evaluateBinaryExpression(expression.data.binary, output);
+		}
+		case EXPRESSION_STRING: {
+			return stringValue(expression.data.string, output);
+		}
+		case EXPRESSION_NUMBER: {
+			return numberValue(expression.data.number, output);
+		}
+		case EXPRESSION_LIST: {
+			return evaluateList(*expression.data.list, output);
+		}
+		case EXPRESSION_FUNCTION: {
+			return evaluateFunction(expression.data.function, output);
+		}
+		case EXPRESSION_UNARY: {
+			return evaluateUnaryExpression(*expression.data.unary, output);
+		}
+		case EXPRESSION_BUILTIN_FUNCTION: {
+			UNREACHABLE;
 		}
 	}
 }
 
-PRIVATE Result evaluateStatement(Statement* statement) {
+PRIVATE Result evaluateStatement(Statement statement) {
 	if (isReturning) {
 		return OK;
 	}
 
-	DEBUG_START("Evaluating statement");
-	switch (statement->type) {
+	switch (statement.type) {
 		case STATEMENT_EXPRESSION: {
-			Expression output;
-			TRY(evaluateExpression(&statement->data.expression, &output));
-			DEBUG_END;
+			TRY_LET(Value value, evaluateExpression(statement.data.expression, &value), "evaluating an expression statement");
 			return OK;
 		}
-
 		case STATEMENT_DECLARATION: {
-			DEBUG_START("Evaluating declaration for \"%s\"", statement->data.declaration.name);
-			TRY(evaluateExpression(&statement->data.declaration.value, &statement->data.declaration.value));
-			if (statement->data.declaration.value.type == EXPRESSION_IDENTIFIER) {
-				Expression* value;
-				TRY(getVariable(*CONTEXT->scope, statement->data.declaration.value.data.identifier, &value));
-				statement->data.declaration.value = *value;
-			}
-			TRY(setVariable(CONTEXT->scope, statement->data.declaration));
-			DEBUG_END;
-			DEBUG_END;
+			TRY_LET(Value value, evaluateExpression(statement.data.declaration.value, &value), "evaluating the value of a declaration");
+			ScopeDeclaration declaration = (ScopeDeclaration) {
+				.name = statement.data.declaration.name,
+				.value = value,
+			};
+			TRY(setVariable(CONTEXT->scope, declaration), "declaring the variable \"%s\"", declaration.name);
 			return OK;
 		}
 		case STATEMENT_RETURN: {
-			DEBUG_START("Evaluating return statement");
+			TRY(evaluateExpression(statement.data.returnExpression, &returnValue), "evaluating the value of a return statement");
 			isReturning = true;
-			TRY(evaluateExpression(&statement->data.returnExpression, &returnValue));
-			if (returnValue.type == EXPRESSION_IDENTIFIER) {
-				Expression* value;
-				TRY(getVariable(*CONTEXT->scope, returnValue.data.identifier, &value));
-				returnValue = *value;
-			}
-			DEBUG_END;
-			DEBUG_END;
 			return OK;
 		}
 	}
@@ -560,7 +270,7 @@ PRIVATE Result evaluateStatement(Statement* statement) {
 
 Result run(Program program) {
 	FOR_EACH(Statement statement, program.statements) {
-		TRY(evaluateStatement(&statement));
+		TRY(evaluateStatement(statement), "evaluating a top-level statement");
 	}
 	END;
 

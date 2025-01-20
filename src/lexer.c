@@ -87,8 +87,7 @@ PRIVATE Result getNextToken(String sourceCode, Token* output) {
 			}
 			return createToken(TOKEN_TYPE_LESS_THAN, "<", output);
 		case '(':
-			TRY(createToken(TOKEN_TYPE_LEFT_PARENTHESIS, "(", output));
-			return OK;
+			return createToken(TOKEN_TYPE_LEFT_PARENTHESIS, "(", output);
 		case '{':
 			return createToken(TOKEN_TYPE_LEFT_BRACE, "{", output);
 		case '[':
@@ -98,55 +97,48 @@ PRIVATE Result getNextToken(String sourceCode, Token* output) {
 		case '}':
 			return createToken(TOKEN_TYPE_RIGHT_BRACE, "}", output);
 		case ')':
-			TRY(createToken(TOKEN_TYPE_RIGHT_PARENTHESIS, ")", output));
-			return OK;
+			return createToken(TOKEN_TYPE_RIGHT_PARENTHESIS, ")", output);
 		case ';':
-			TRY(createToken(TOKEN_TYPE_SEMICOLON, ";", output));
-			return OK;
+			return createToken(TOKEN_TYPE_SEMICOLON, ";", output);
 		case ':':
-			TRY(createToken(TOKEN_TYPE_COLON, ":", output));
-			return OK;
+			return createToken(TOKEN_TYPE_COLON, ":", output);
 		case ' ':
-			TRY(createToken(TOKEN_TYPE_WHITESPACE, " ", output));
-			return OK;
+			return createToken(TOKEN_TYPE_WHITESPACE, " ", output);
 		case '\n':
-			TRY(createToken(TOKEN_TYPE_WHITESPACE, "\n", output));
-			return OK;
+			return createToken(TOKEN_TYPE_WHITESPACE, "\n", output);
 		case '\r':
-			TRY(createToken(TOKEN_TYPE_WHITESPACE, "\r", output));
-			return OK;
+			return createToken(TOKEN_TYPE_WHITESPACE, "\r", output);
 		case '\t':
-			TRY(createToken(TOKEN_TYPE_WHITESPACE, "\t", output));
-			return OK;
+			return createToken(TOKEN_TYPE_WHITESPACE, "\t", output);
 	}
 
 	// Number
 	if (*current >= '0' && *current <= '9') {
 		CharList characters;
-		TRY(emptyCharList(&characters));
+		TRY(emptyCharList(&characters), "creating the character list for a number token");
 		while ((*current >= '0' && *current <= '9') && current < sourceCode + strlen(sourceCode)) {
-			TRY(appendToCharList(&characters, *current));
+			TRY(appendToCharList(&characters, *current), "appending to the number token's character list");
 			current++;
 		}
-		TRY(appendToCharList(&characters, '\0'));
-		TRY_LET(Token, token, createToken, TOKEN_TYPE_NUMBER, characters.data);
-		RETURN_OK(output, token);
+		TRY(appendToCharList(&characters, '\0'), "appending the null terminator on the number token's character list");
+
+		return createToken(TOKEN_TYPE_NUMBER, characters.data, output);
 	}
 
 	// Identifier
 	if ((*current >= 'A' && *current <= 'Z') ||
 		(*current >= 'a' && *current <= 'z') || *current == '_') {
 		CharList identifierCharacters;
-		TRY(emptyCharList(&identifierCharacters));
+		TRY(emptyCharList(&identifierCharacters), "creating the character list for an identifier token");
 		while (((*current >= 'A' && *current <= 'Z') ||
 				(*current >= 'a' && *current <= 'z') ||
 				(*current >= '0' && *current <= '9') ||
 				*current == '_') &&
 			   current < sourceCode + strlen(sourceCode)) {
-			TRY(appendToCharList(&identifierCharacters, *current));
+			TRY(appendToCharList(&identifierCharacters, *current), "appending a character to the identifier token's character list");
 			current++;
 		}
-		TRY(appendToCharList(&identifierCharacters, '\0'));
+		TRY(appendToCharList(&identifierCharacters, '\0'), "appending the null terminator to the identifier token's character list");
 		String identifier = identifierCharacters.data;
 
 		// Keywords
@@ -155,12 +147,8 @@ PRIVATE Result getNextToken(String sourceCode, Token* output) {
 			type = TOKEN_TYPE_KEYWORD_LET;
 		} else if (strcmp(identifier, "function") == 0) {
 			type = TOKEN_TYPE_KEYWORD_FUNCTION;
-		} else if (strcmp(identifier, "true") == 0) {
-			type = TOKEN_TYPE_KEYWORD_TRUE;
 		} else if (strcmp(identifier, "do") == 0) {
 			type = TOKEN_TYPE_KEYWORD_DO;
-		} else if (strcmp(identifier, "false") == 0) {
-			type = TOKEN_TYPE_KEYWORD_FALSE;
 		} else if (strcmp(identifier, "type") == 0) {
 			type = TOKEN_TYPE_KEYWORD_TYPE;
 		} else if (strcmp(identifier, "for") == 0) {
@@ -179,8 +167,7 @@ PRIVATE Result getNextToken(String sourceCode, Token* output) {
 			type = TOKEN_TYPE_KEYWORD_ELSE;
 		}
 
-		TRY_LET(Token, token, createToken, type, identifier);
-		RETURN_OK(output, token);
+		return createToken(type, identifier, output);
 	}
 
 	// String
@@ -189,19 +176,19 @@ PRIVATE Result getNextToken(String sourceCode, Token* output) {
 
 		char quote = '"';
 		CharList stringCharacters;
-		TRY(emptyCharList(&stringCharacters));
+		TRY(emptyCharList(&stringCharacters), "creating the character list for a string token");
 
-		TRY(appendToCharList(&stringCharacters, quote));
+		TRY(appendToCharList(&stringCharacters, quote), "appending the leading quote character to a string token's character list");
 		while (*current != '"') {
-			TRY(appendToCharList(&stringCharacters, *current));
+			TRY(appendToCharList(&stringCharacters, *current), "appending a character to a string tokne's character list");
 			current++;
 		}
-		TRY(appendToCharList(&stringCharacters, quote));
-		TRY(appendToCharList(&stringCharacters, '\0'));
+		TRY(appendToCharList(&stringCharacters, quote), "appending the trailing quote to a string token's character list");
+		TRY(appendToCharList(&stringCharacters, '\0'), "appending the null terminator to a string token's character list");
 
 		String string = stringCharacters.data;
-		TRY_LET(Token, token, createToken, TOKEN_TYPE_STRING, string);
-		RETURN_OK(output, token);
+
+		return createToken(TOKEN_TYPE_STRING, string, output);
 	}
 
 	// Unrecognized
@@ -238,19 +225,20 @@ Result tokenize(String sourceCode, TokenList* output) {
 	ASSERT_NONNULL(sourceCode);
 	ASSERT_NONNULL(output);
 
-	TRY(emptyTokenList(output));
+	TRY(emptyTokenList(output), "creating the program's token list");
 	size_t cursor = 0;
 	size_t sourceLength = strlen(sourceCode);
 
 	while (cursor != sourceLength) {
-		TRY_LET(Token, token, getNextToken, sourceCode + cursor);
+		Token token;
+		TRY(getNextToken(sourceCode + cursor, &token), "getting the next token from the source code");
 		size_t length = strlen(token.value);
 		if (token.type != TOKEN_TYPE_WHITESPACE) {
 			if (token.type == TOKEN_TYPE_STRING) {
 				token.value[length - 1] = '\0';
 				token.value++;
 			}
-			TRY(appendToTokenList(output, token));
+			TRY(appendToTokenList(output, token), "appending to the program's token list");
 		}
 		cursor += length;
 	}
@@ -281,12 +269,8 @@ String tokenTypeName(TokenType type) {
 		case TOKEN_TYPE_KEYWORD_WHILE:
 			return "keyword while";
 		case TOKEN_TYPE_KEYWORD_TYPE:
-			return "keyword while";
+			return "keyword type";
 		case TOKEN_TYPE_KEYWORD_LET:
-			return "keyword let";
-		case TOKEN_TYPE_KEYWORD_FALSE:
-			return "keyword let";
-		case TOKEN_TYPE_KEYWORD_TRUE:
 			return "keyword let";
 		case TOKEN_TYPE_KEYWORD_RETURN:
 			return "keyword return";
@@ -344,8 +328,6 @@ String tokenTypeName(TokenType type) {
 			return "comment";
 		case TOKEN_TYPE_WHITESPACE:
 			return "whitespace";
-		case TOKEN_TYPE_EOF:
-			return "end of file";
 	}
 }
 

@@ -26,35 +26,33 @@
  * scopes), an error is returned. If the given `scope` or `name` is `NULL`,
  * an error is returned.
  */
-Result declareNewVariable(Scope* scope, Declaration declaration) {
-	DEBUG_START("Declaring new variable \"%s\"", declaration.name);
+Result declareNewVariable(Scope* scope, ScopeDeclaration declaration) {
 	// Error - null scope
 	if (scope == NULL) {
 		RETURN_ERROR("Attempted to declare a variable to a NULL scope.");
 	}
 
 	// Error - Variable already exists
-	Expression* value = NULL;
+	Value* value = NULL;
 	if (isOk(getVariable(*scope, declaration.name, &value))) {
 		RETURN_ERROR("Duplicate variable declaration for \"%s\"", declaration.name);
 	}
 
 	// Add the variable
-	TRY(appendToDeclarationList(&scope->variables, declaration));
+	TRY(appendToScopeDeclarationList(&scope->variables, declaration), "appending the declaration for \"%s\" to the scope's declarations", declaration.name);
 
 	// Return ok
-	DEBUG_END;
 	return OK;
 }
 
-Result reassignVariable(Scope* scope, Declaration declaration) {
+Result reassignVariable(Scope* scope, ScopeDeclaration declaration) {
 	// Error - null scope
 	if (scope == NULL) {
 		RETURN_ERROR("Attempted to reassign a variable in a NULL scope");
 	}
 
 	// Variable already exists
-	Expression* value = NULL;
+	Value* value = NULL;
 	if (isError(getVariable(*scope, declaration.name, &value))) {
 		RETURN_ERROR("Attempted to reference a variable called \"%s\", but no variable with that name exists where it was referenced.", declaration.name);
 	}
@@ -66,27 +64,24 @@ Result reassignVariable(Scope* scope, Declaration declaration) {
 	return OK;
 }
 
-Result setVariable(Scope* scope, Declaration declaration) {
-	DEBUG_START("Setting variable \"%s\" to a %s", declaration.name, expressionTypeName(declaration.value.type));
-
+Result setVariable(Scope* scope, ScopeDeclaration declaration) {
 	// Error - null scope
 	if (scope == NULL) {
 		RETURN_ERROR("Attempted to set a variable in a NULL scope");
 	}
 
 	// Variable already exists
-	Expression* value = NULL;
+	Value* value = NULL;
 	getVariable(*scope, declaration.name, &value);
 
 	// Add the variable
 	if (value == NULL) {
-		TRY(appendToDeclarationList(&scope->variables, declaration));
+		TRY(appendToScopeDeclarationList(&scope->variables, declaration), "appending the declaration for \"%s\" to the scope's declarations", declaration.name);
 	} else {
 		*value = declaration.value;
 	}
 
 	// Return ok
-	DEBUG_END;
 	return OK;
 }
 
@@ -113,13 +108,11 @@ Result setVariable(Scope* scope, Declaration declaration) {
  * If no variable exists with the given name in the given scope,
  * an error is returned.
  */
-Result getVariable(Scope scope, String name, Expression** output) {
-	DEBUG_START("Resolving variable \"%s\"", name);
+Result getVariable(Scope scope, String name, Value** output) {
 	Scope* current = &scope;
 	while (current != NULL) {
-		FOR_EACH_REF(Declaration * variable, current->variables) {
+		FOR_EACH_REF(ScopeDeclaration * variable, current->variables) {
 			if (strcmp(variable->name, name) == 0) {
-				DEBUG_END;
 				RETURN_OK(output, &variable->value);
 			}
 		}
@@ -132,10 +125,10 @@ Result getVariable(Scope scope, String name, Expression** output) {
 
 Result enterNewScope(void) {
 	ScopeList children;
-	TRY(emptyScopeList(&children));
+	TRY(emptyScopeList(&children), "creating the child scope list for a scope");
 
-	DeclarationList variables;
-	TRY(emptyDeclarationList(&variables));
+	ScopeDeclarationList variables;
+	TRY(emptyScopeDeclarationList(&variables), "creating the variable list for a scope");
 
 	Scope scope = (Scope) {
 		.parent = CONTEXT->scope,
@@ -143,7 +136,7 @@ Result enterNewScope(void) {
 		.variables = variables,
 	};
 
-	TRY(appendToScopeList(&CONTEXT->scope->children, scope));
+	TRY(appendToScopeList(&CONTEXT->scope->children, scope), "appending to the current scope's children list");
 	CONTEXT->scope = &CONTEXT->scope->children.data[CONTEXT->scope->children.size - 1];
 
 	return OK;
@@ -174,10 +167,10 @@ Result exitScope(void) {
  */
 Result newContext(Context* output) {
 	ScopeList children;
-	TRY(emptyScopeList(&children));
+	TRY(emptyScopeList(&children), "creating the context's scope list");
 
-	DeclarationList variables;
-	TRY(emptyDeclarationList(&variables));
+	ScopeDeclarationList variables;
+	TRY(emptyScopeDeclarationList(&variables), "creating the context's variable list");
 
 	Scope globalScope = (Scope) {
 		.parent = NULL,
@@ -185,13 +178,9 @@ Result newContext(Context* output) {
 		.variables = variables,
 	};
 
-	StringList stackTrace;
-	TRY(emptyStringList(&stackTrace));
-
 	*output = (Context) {
 		.globalScope = globalScope,
 		.debugIndent = 0,
-		.errorStackTrace = stackTrace,
 	};
 	output->scope = &output->globalScope;
 
@@ -213,3 +202,4 @@ void freeContext(Context context) {
 }
 
 IMPLEMENT_LIST(Scope)
+IMPLEMENT_LIST(ScopeDeclaration)

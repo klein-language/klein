@@ -10,7 +10,7 @@ void printHelp(bool detailed);
 
 #define STYLE(text, color, style) "\033[" style ";3" color "m" text "\033[0m"
 #define COLOR(text, color) STYLE(text, color, NORMAL)
-#define FORMAT(text, style) "\033[" style "m" text "\033[0m"
+#define DECORATE(text, style) "\033[" style "m" text "\033[0m"
 
 #define RED "1"
 #define GREEN "2"

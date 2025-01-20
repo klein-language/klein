@@ -3,32 +3,36 @@
 #include "../include/lexer.h"
 #include "../include/list.h"
 #include "../include/result.h"
-#include "../include/sugar.h"
 #include "../include/util.h"
 
 #include <stdlib.h>
 #include <string.h>
 
-typedef union {
-	Expression owned;
-	Expression* borrowed;
-} MaybeBorrowedExpressionData;
-
+PRIVATE Result parseLiteral(TokenList* tokens, Expression* output);
+PRIVATE Result parseStatement(TokenList* tokens, Statement* output);
+PRIVATE Result parseType(TokenList* tokens, Type* output);
 PRIVATE Result parseExpression(TokenList* tokens, Expression* output);
+PRIVATE Result parseBinaryOperation(TokenList* tokens, BinaryOperator operator, Expression * output);
+PRIVATE Result parsePrefixExpression(TokenList* tokens, Expression* output);
 
-Result getObjectInternal(Object object, String name, void** output) {
-	FOR_EACH(InternalField internal, object.internals) {
-		if (strcmp(internal.name, name) == 0) {
+bool hasInternal(Value value, InternalKey key) {
+	void* output;
+	return isOk(getValueInternal(value, key, &output));
+}
+
+Result getValueInternal(Value value, InternalKey key, void** output) {
+	FOR_EACH(Internal internal, value.internals) {
+		if (internal.key == key) {
 			RETURN_OK(output, internal.value);
 		}
 	}
 	END;
 
-	RETURN_ERROR("Attempted to get an internal called \"%s\" on an object, but no internal with that name exists.", name);
+	RETURN_ERROR("Attempted to get an internal called \"%u\" on a value, but no internal with that name exists.", key);
 }
 
-Result getObjectField(Object object, String name, Expression** output) {
-	FOR_EACH_REF(Field * field, object.fields) {
+Result getValueField(Value value, String name, Value** output) {
+	FOR_EACH_REFP(ValueField * field, value.fields) {
 		if (strcmp(field->name, name) == 0) {
 			RETURN_OK(output, &field->value);
 		}
@@ -94,12 +98,23 @@ PRIVATE bool nextTokenIs(TokenList* tokens, TokenType type) {
 	return tokens->data[0].type == type;
 }
 
-PRIVATE Result parseLiteral(TokenList* tokens, Expression* output);
-PRIVATE Result parseStatement(TokenList* tokens, Statement* output);
-PRIVATE Result parseType(TokenList* tokens, Type* output);
+PRIVATE bool nextTokenIsOneOf(TokenList* tokens, TokenType* options, size_t optionCount) {
+	if (isTokenListEmpty(*tokens)) {
+		return false;
+	}
+
+	for (size_t index = 0; index < optionCount; index++) {
+		if (nextTokenIs(tokens, options[index])) {
+			return true;
+		}
+	}
+
+	return false;
+}
 
 PRIVATE Result parseTypeLiteral(TokenList* tokens, TypeLiteral* output) {
-	TRY_LET(TokenType, nextTokenType, peekTokenType, tokens);
+	TokenType nextTokenType;
+	TRY(peekTokenType(tokens, &nextTokenType), "peeking the next token type");
 	switch (nextTokenType) {
 
 		// Identifier
@@ -122,19 +137,19 @@ PRIVATE Result parseTypeLiteral(TokenList* tokens, TypeLiteral* output) {
 
 			// Parameters
 			ParameterList parameterTypes;
-			TRY(emptyParameterList(&parameterTypes));
-			TRY(popToken(tokens, TOKEN_TYPE_LEFT_PARENTHESIS, &next));
+			TRY(emptyParameterList(&parameterTypes), "creating the parameter list for a function expression");
+			TRY(popToken(tokens, TOKEN_TYPE_LEFT_PARENTHESIS, &next), "attempting to consume the opening parenthesis for a function's parameter list");
 			while (!nextTokenIs(tokens, TOKEN_TYPE_RIGHT_PARENTHESIS)) {
 				Type type;
-				TRY(parseType(tokens, &type));
-				TRY(appendToParameterList(&parameterTypes, (Parameter) {.name = "", .type = type}));
+				TRY(parseType(tokens, &type), "parsing a function parameter's type");
+				TRY(appendToParameterList(&parameterTypes, (Parameter) {.name = "", .type = type}), "appending to a function's parameter list");
 			}
-			TRY(popToken(tokens, TOKEN_TYPE_RIGHT_PARENTHESIS, &next));
+			TRY(popToken(tokens, TOKEN_TYPE_RIGHT_PARENTHESIS, &next), "attempting to consume the closing parenthesis for a function's parameter list");
 
 			// Return type
-			TRY(popToken(tokens, TOKEN_TYPE_COLON, &next));
+			TRY(popToken(tokens, TOKEN_TYPE_COLON, &next), "attempting to consume the colon before a function's return type");
 			Type returnType;
-			TRY(parseType(tokens, &returnType));
+			TRY(parseType(tokens, &returnType), "parsing a function's return type");
 
 			// Create function
 			Function* function = malloc(sizeof(Function));
@@ -163,26 +178,41 @@ PRIVATE Result parseTypeLiteral(TokenList* tokens, TypeLiteral* output) {
 }
 
 PRIVATE Result parseType(TokenList* tokens, Type* output) {
-	DEBUG_START("parsing type");
 	TypeLiteral literal;
-	TRY(parseTypeLiteral(tokens, &literal));
-	DEBUG_END;
+	TRY(parseTypeLiteral(tokens, &literal), "parsing a type literal");
 	RETURN_OK(output, ((Type) {.type = TYPE_LITERAL, .data = (TypeData) {.literal = literal}}));
 }
 
+/**
+ * Parses a `block expression`.
+ *
+ * Syntax: `"{" <statement>* "}"`
+ *
+ * # Parameters
+ *
+ * - `tokens` - The token list to parse from
+ * - `output` - Where to place the parsed output
+ *
+ * # Returns
+ *
+ * A result, indicating success or failure. If failed, contains the error message.
+ *
+ * # Errors
+ *
+ * If an unexpected token was encountered (including the token stream running out of tokens
+ * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
+ */
 PRIVATE Result parseBlock(TokenList* tokens, Block* output) {
-	DEBUG_START("parsing block expression");
-
-	TRY(enterNewScope());
-	TRY_LET(String, next, popToken, tokens, TOKEN_TYPE_LEFT_BRACE);
+	TRY(enterNewScope(), "entering a new scope");
+	TRY_LET(String next, popToken(tokens, TOKEN_TYPE_LEFT_BRACE, &next), "consuming the opening brace for a block");
 
 	// Parse statements
 	StatementList* statements;
-	TRY(emptyHeapStatementList(&statements));
+	TRY(emptyHeapStatementList(&statements), "creating a block's statement list");
 	while (!nextTokenIs(tokens, TOKEN_TYPE_RIGHT_BRACE)) {
 		Statement statement;
-		TRY(parseStatement(tokens, &statement));
-		TRY(appendToStatementList(statements, statement));
+		TRY(parseStatement(tokens, &statement), "parsing a statement");
+		TRY(appendToStatementList(statements, statement), "appending a statement to a block's statement list");
 	}
 
 	UNWRAP(popToken(tokens, TOKEN_TYPE_RIGHT_BRACE, &next));
@@ -192,38 +222,57 @@ PRIVATE Result parseBlock(TokenList* tokens, Block* output) {
 		.innerScope = CONTEXT->scope,
 	};
 
-	TRY(exitScope());
+	TRY(exitScope(), "exiting a block's scope");
 
-	DEBUG_END;
 	RETURN_OK(output, block);
 }
 
+/**
+ * Parses an `object literal expression`.
+ *
+ * Syntax:
+ *
+ * ```
+ * <field> ::= <identifier> "=" <value>
+ * <object> ::= "{" ( <field> ("," <field>)* ","? )? "}"`
+ * ```
+ *
+ * # Parameters
+ *
+ * - `tokens` - The token list to parse from
+ * - `output` - Where to place the parsed output
+ *
+ * # Returns
+ *
+ * A result, indicating success or failure. If failed, contains the error message.
+ *
+ * # Errors
+ *
+ * If an unexpected token was encountered (including the token stream running out of tokens
+ * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
+ */
 PRIVATE Result parseObjectLiteral(TokenList* tokens, Expression* output) {
-	TRY_LET(String, next, popToken, tokens, TOKEN_TYPE_LEFT_BRACE);
+	TRY_LET(String next, popToken(tokens, TOKEN_TYPE_LEFT_BRACE, &next), "attempting to consume the opening brace on an object literal");
 
 	// Fields
 	FieldList fields;
-	TRY(emptyFieldList(&fields));
+	TRY(emptyFieldList(&fields), "creating an object's field list");
 	while (!nextTokenIs(tokens, TOKEN_TYPE_RIGHT_BRACE)) {
-		TRY_LET(String, name, popToken, tokens, TOKEN_TYPE_IDENTIFIER);
-		TRY(popToken(tokens, TOKEN_TYPE_EQUALS, &next));
-		TRY_LET(Expression, value, parseExpression, tokens);
-		TRY(appendToFieldList(&fields, (Field) {.name = name, .value = value}));
+		TRY_LET(String name, popToken(tokens, TOKEN_TYPE_IDENTIFIER, &name), "parsing the name of an object field");
+		TRY(popToken(tokens, TOKEN_TYPE_EQUALS, &next), "consuming the equal sign after an object field name");
+		TRY_LET(Expression value, parseExpression(tokens, &value), "parsing the value of an object field");
+		TRY(appendToFieldList(&fields, (Field) {.name = name, .value = value}), "appending to an object's field list");
 		if (!nextTokenIs(tokens, TOKEN_TYPE_RIGHT_BRACE)) {
-			TRY(popToken(tokens, TOKEN_TYPE_COMMA, &next));
+			TRY(popToken(tokens, TOKEN_TYPE_COMMA, &next), "attempting to consume a comma in between object fields");
 		}
 	}
 
-	TRY(popToken(tokens, TOKEN_TYPE_RIGHT_BRACE, &next));
-
-	InternalFieldList internals;
-	TRY(emptyInternalFieldList(&internals));
+	TRY(popToken(tokens, TOKEN_TYPE_RIGHT_BRACE, &next), "attempting to consume the closing brace on an object literal");
 
 	Object* object = malloc(sizeof(Object));
 	ASSERT_NONNULL(object);
 	*object = (Object) {
 		.fields = fields,
-		.internals = internals,
 	};
 	Expression expression = (Expression) {
 		.type = EXPRESSION_OBJECT,
@@ -234,300 +283,435 @@ PRIVATE Result parseObjectLiteral(TokenList* tokens, Expression* output) {
 	RETURN_OK(output, expression);
 }
 
+/**
+ * Parses a `string literal expression`.
+ *
+ * Syntax: `<string>`
+ *
+ * # Parameters
+ *
+ * - `tokens` - The token list to parse from
+ * - `output` - Where to place the parsed output
+ *
+ * # Returns
+ *
+ * A result, indicating success or failure. If failed, contains the error message.
+ *
+ * # Errors
+ *
+ * If an unexpected token was encountered (including the token stream running out of tokens
+ * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
+ */
+PRIVATE Result parseStringLiteral(TokenList* tokens, Expression* output) {
+	UNWRAP_LET(String value, popToken(tokens, TOKEN_TYPE_STRING, &value));
+	Expression expression = (Expression) {
+		.type = EXPRESSION_STRING,
+		.data = (ExpressionData) {
+			.string = value,
+		},
+	};
+	RETURN_OK(output, expression);
+}
+
+/**
+ * Parses an `identifier literal expression`.
+ *
+ * Syntax: `<identifier>`
+ *
+ * # Parameters
+ *
+ * - `tokens` - The token list to parse from
+ * - `output` - Where to place the parsed output
+ *
+ * # Returns
+ *
+ * A result, indicating success or failure. If failed, contains the error message.
+ *
+ * # Errors
+ *
+ * If an unexpected token was encountered (including the token stream running out of tokens
+ * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
+ */
+PRIVATE Result parseIdentifierLiteral(TokenList* tokens, Expression* output) {
+	UNWRAP_LET(String identifier, popToken(tokens, TOKEN_TYPE_IDENTIFIER, &identifier));
+	Expression expression = (Expression) {
+		.type = EXPRESSION_IDENTIFIER,
+		.data = (ExpressionData) {
+			.identifier = identifier,
+		},
+	};
+	RETURN_OK(output, expression);
+}
+
+/**
+ * Parses a `list literal expression`.
+ *
+ * Syntax: `"[" ( <expression> ("," <expression>)* ","? )? "]"`
+ *
+ * # Parameters
+ *
+ * - `tokens` - The token list to parse from
+ * - `output` - Where to place the parsed output
+ *
+ * # Returns
+ *
+ * A result, indicating success or failure. If failed, contains the error message.
+ *
+ * # Errors
+ *
+ * If an unexpected token was encountered (including the token stream running out of tokens
+ * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
+ */
+PRIVATE Result parseListLiteral(TokenList* tokens, Expression* output) {
+	UNWRAP_LET(String next, popToken(tokens, TOKEN_TYPE_LEFT_BRACKET, &next));
+
+	ExpressionList* elements;
+	TRY(emptyHeapExpressionList(&elements), "creating the element list for a list literal");
+	while (!nextTokenIs(tokens, TOKEN_TYPE_RIGHT_BRACKET)) {
+		TRY_LET(Expression element, parseExpression(tokens, &element), "parsing an element of a list literal");
+		TRY(appendToExpressionList(elements, element), "appending to a list's expression list");
+		if (!nextTokenIs(tokens, TOKEN_TYPE_RIGHT_BRACKET)) {
+			TRY(popToken(tokens, TOKEN_TYPE_COMMA, &next), "attempting to consume a comma between list elements");
+		}
+	}
+	UNWRAP(popToken(tokens, TOKEN_TYPE_RIGHT_BRACKET, &next));
+
+	Expression list = (Expression) {
+		.type = EXPRESSION_LIST,
+		.data = (ExpressionData) {
+			.list = elements,
+		},
+	};
+
+	RETURN_OK(output, list);
+}
+
+/**
+ * Parses a `for loop expression`.
+ *
+ * Syntax: `"for" <identifier> "in" <expression> <block>`
+ *
+ * # Parameters
+ *
+ * - `tokens` - The token list to parse from
+ * - `output` - Where to place the parsed output
+ *
+ * # Returns
+ *
+ * A result, indicating success or failure. If failed, contains the error message.
+ *
+ * # Errors
+ *
+ * If an unexpected token was encountered (including the token stream running out of tokens
+ * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
+ */
+PRIVATE Result parseForLoop(TokenList* tokens, Expression* output) {
+	UNWRAP_LET(String next, popToken(tokens, TOKEN_TYPE_KEYWORD_FOR, &next));
+	TRY_LET(String binding, popToken(tokens, TOKEN_TYPE_IDENTIFIER, &binding), "parsing the binding in a for loop");
+	TRY(popToken(tokens, TOKEN_TYPE_KEYWORD_IN, &next), "consuming the keyword in in a for loop");
+	TRY_LET(Expression list, parseExpression(tokens, &list), "parsing the list to iterate on in a for loop");
+	TRY_LET(Block body, parseBlock(tokens, &body), "parsing the body of a for loop");
+
+	ForLoop* forLoop = malloc(sizeof(ForLoop));
+	*forLoop = (ForLoop) {
+		.binding = binding,
+		.list = list,
+		.body = body,
+	};
+
+	Expression loop = (Expression) {
+		.type = EXPRESSION_FOR_LOOP,
+		.data = (ExpressionData) {
+			.forLoop = forLoop,
+		},
+	};
+	RETURN_OK(output, loop);
+}
+
+/**
+ * Parses a `while loop expression`.
+ *
+ * Syntax: `"while" <expression> <block>`
+ *
+ * # Parameters
+ *
+ * - `tokens` - The token list to parse from
+ * - `output` - Where to place the parsed output
+ *
+ * # Returns
+ *
+ * A result, indicating success or failure. If failed, contains the error message.
+ *
+ * # Errors
+ *
+ * If an unexpected token was encountered (including the token stream running out of tokens
+ * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
+ */
+PRIVATE Result parseWhileLoop(TokenList* tokens, Expression* output) {
+	UNWRAP_LET(String next, popToken(tokens, TOKEN_TYPE_KEYWORD_WHILE, &next));
+	TRY_LET(Expression condition, parseExpression(tokens, &condition), "parsing the condition for a while loop");
+	TRY_LET(Block body, parseBlock(tokens, &body), "parsing the body of a while loop");
+
+	WhileLoop* whileLoop = malloc(sizeof(WhileLoop));
+	*whileLoop = (WhileLoop) {
+		.condition = condition,
+		.body = body,
+	};
+
+	Expression loop = (Expression) {
+		.type = EXPRESSION_WHILE_LOOP,
+		.data = (ExpressionData) {
+			.whileLoop = whileLoop,
+		},
+	};
+	RETURN_OK(output, loop);
+}
+
+/**
+ * Parses an `if-expression`.
+ *
+ * Syntax: `"if" <expression> <block> ("else" "if" <expression> <block>)* ("else" <block>)?`
+ *
+ * # Parameters
+ *
+ * - `tokens` - The token list to parse from
+ * - `output` - Where to place the parsed output
+ *
+ * # Returns
+ *
+ * A result, indicating success or failure. If failed, contains the error message.
+ *
+ * # Errors
+ *
+ * If an unexpected token was encountered (including the token stream running out of tokens
+ * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
+ */
+PRIVATE Result parseIfExpression(TokenList* tokens, Expression* output) {
+	UNWRAP_LET(String next, popToken(tokens, TOKEN_TYPE_KEYWORD_IF, &next));
+	TRY_LET(Expression condition, parseExpression(tokens, &condition), "parsing the condition for an if expression");
+	TRY_LET(Block body, parseBlock(tokens, &body), "parsing the body of an if expression");
+
+	IfExpression* ifExpression = malloc(sizeof(IfExpression));
+	*ifExpression = (IfExpression) {
+		.condition = condition,
+		.body = body,
+	};
+
+	Expression loop = (Expression) {
+		.type = EXPRESSION_IF,
+		.data = (ExpressionData) {
+			.ifExpression = ifExpression,
+		},
+	};
+	RETURN_OK(output, loop);
+}
+
+/**
+ * Parses a `number literal expression`.
+ *
+ * Syntax: `<number>`
+ *
+ * # Parameters
+ *
+ * - `tokens` - The token list to parse from
+ * - `output` - Where to place the parsed output
+ *
+ * # Returns
+ *
+ * A result, indicating success or failure. If failed, contains the error message.
+ *
+ * # Errors
+ *
+ * If an unexpected token was encountered (including the token stream running out of tokens
+ * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
+ */
+PRIVATE Result parseNumberLiteral(TokenList* tokens, Expression* output) {
+	UNWRAP_LET(String value, popToken(tokens, TOKEN_TYPE_NUMBER, &value));
+	Expression expression = (Expression) {
+		.type = EXPRESSION_NUMBER,
+		.data = (ExpressionData) {
+			.number = atof(value),
+		},
+	};
+	RETURN_OK(output, expression);
+}
+
+/**
+ * Parses a `do block expression`.
+ *
+ * Syntax: `"do" <block>`
+ *
+ * # Parameters
+ *
+ * - `tokens` - The token list to parse from
+ * - `output` - Where to place the parsed output
+ *
+ * # Returns
+ *
+ * A result, indicating success or failure. If failed, contains the error message.
+ *
+ * # Errors
+ *
+ * If an unexpected token was encountered (including the token stream running out of tokens
+ * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
+ */
+PRIVATE Result parseDoBlock(TokenList* tokens, Expression* output) {
+	UNWRAP_LET(String next, popToken(tokens, TOKEN_TYPE_KEYWORD_DO, &next));
+
+	Block block;
+	TRY(parseBlock(tokens, &block), "parsing a block expression");
+	Block* heapBlock = malloc(sizeof(Block));
+	*heapBlock = block;
+
+	Expression expression = (Expression) {
+		.type = EXPRESSION_BLOCK,
+		.data = (ExpressionData) {
+			.block = heapBlock,
+		},
+	};
+
+	RETURN_OK(output, expression);
+}
+
+/**
+ * Parses a `function literal expression`.
+ *
+ * Syntax:
+ *
+ * ```
+ * <parameter> ::= <identifier> ":" <type>
+ * <function> ::= "function" "(" ( <parameter> ("," <parameter>)* ","? )? ")" ":" <type> <block>`
+ * ```
+ *
+ * # Parameters
+ *
+ * - `tokens` - The token list to parse from
+ * - `output` - Where to place the parsed output
+ *
+ * # Returns
+ *
+ * A result, indicating success or failure. If failed, contains the error message.
+ *
+ * # Errors
+ *
+ * If an unexpected token was encountered (including the token stream running out of tokens
+ * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
+ */
+PRIVATE Result parseFunctionLiteral(TokenList* tokens, Expression* output) {
+	UNWRAP_LET(String next, popToken(tokens, TOKEN_TYPE_KEYWORD_FUNCTION, &next));
+
+	// Parameters
+	ParameterList parameters;
+	TRY(emptyParameterList(&parameters), "creating a function literal's parameter list");
+
+	TRY(popToken(tokens, TOKEN_TYPE_LEFT_PARENTHESIS, &next), "attempting to consume the opening parenthesis for a function literal's parameter list");
+
+	while (!nextTokenIs(tokens, TOKEN_TYPE_RIGHT_PARENTHESIS)) {
+		TRY_LET(String name, popToken(tokens, TOKEN_TYPE_IDENTIFIER, &name), "parsing a function literal's parameter name");
+		TRY(popToken(tokens, TOKEN_TYPE_COLON, &next), "consuming the colon after a function literal's parameter name");
+		TRY_LET(Type type, parseType(tokens, &type), "parsing a function parameter's type");
+
+		Parameter parameter = (Parameter) {
+			.type = type,
+			.name = name,
+		};
+
+		TRY(appendToParameterList(&parameters, parameter), "appending to a function's parameter list");
+
+		if (!nextTokenIs(tokens, TOKEN_TYPE_RIGHT_PARENTHESIS)) {
+			TRY(popToken(tokens, TOKEN_TYPE_COMMA, &next), "attempting to consume the comma after a function's parameter");
+		}
+	}
+	UNWRAP(popToken(tokens, TOKEN_TYPE_RIGHT_PARENTHESIS, &next));
+
+	// Return type
+	TRY(popToken(tokens, TOKEN_TYPE_COLON, &next), "attempting to consume the colon before a function's return type");
+	TRY_LET(Type returnType, parseType(tokens, &returnType), "parsing a function literal's return type");
+
+	// Body
+	TRY_LET(Block body, parseBlock(tokens, &body), "parsing the body of a function literal");
+
+	// Create function
+	Function function = (Function) {
+		.parameters = parameters,
+		.returnType = returnType,
+		.body = body,
+	};
+
+	// Create expression
+	Expression expression = (Expression) {
+		.type = EXPRESSION_FUNCTION,
+		.data = (ExpressionData) {
+			.function = function,
+		},
+	};
+
+	RETURN_OK(output, expression);
+}
+
+/**
+ * Parses a `parenthesized expression`.
+ *
+ * Syntax: `"(" <expression> ")"`
+ *
+ * # Parameters
+ *
+ * - `tokens` - The token list to parse from
+ * - `output` - Where to place the parsed output
+ *
+ * # Returns
+ *
+ * A result, indicating success or failure. If failed, contains the error message.
+ *
+ * # Errors
+ *
+ * If an unexpected token was encountered (including the token stream running out of tokens
+ * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
+ */
+PRIVATE Result parseParenthesizedExpression(TokenList* tokens, Expression* output) {
+	TRY_LET(String next, popToken(tokens, TOKEN_TYPE_LEFT_PARENTHESIS, &next), "parsing the left parenthesis in a parenthesized expression");
+	TRY(parseExpression(tokens, output), "parsing the inside of a parenthesized expression");
+	TRY(popToken(tokens, TOKEN_TYPE_RIGHT_PARENTHESIS, &next), "parsing the closing parenthesis in a parenthesized expression");
+	return OK;
+}
+
 PRIVATE Result parseLiteral(TokenList* tokens, Expression* output) {
-	DEBUG_START("parsing literal");
-	TRY_LET(TokenType, nextTokenType, peekTokenType, tokens);
+	TRY_LET(TokenType nextTokenType, peekTokenType(tokens, &nextTokenType), "peeking the next token type");
+
 	switch (nextTokenType) {
-
-		// String
 		case TOKEN_TYPE_STRING: {
-			DEBUG_START("parsing string literal");
-			UNWRAP_LET(String, value, popToken, tokens, TOKEN_TYPE_STRING);
-			TRY_LET(Expression, expression, stringExpression, value);
-			DEBUG_END;
-			DEBUG_END;
-			RETURN_OK(output, expression);
+			return parseStringLiteral(tokens, output);
 		}
-
-		// Identifier
 		case TOKEN_TYPE_IDENTIFIER: {
-			UNWRAP_LET(String, identifier, popToken, tokens, TOKEN_TYPE_IDENTIFIER);
-			Expression expression = (Expression) {
-				.type = EXPRESSION_IDENTIFIER,
-				.data = (ExpressionData) {
-					.identifier = identifier,
-				},
-			};
-			DEBUG_END;
-			RETURN_OK(output, expression);
+			return parseIdentifierLiteral(tokens, output);
 		}
-
-		// List literal
 		case TOKEN_TYPE_LEFT_BRACKET: {
-			DEBUG_START("parsing list literal");
-			UNWRAP_LET(String, next, popToken, tokens, TOKEN_TYPE_LEFT_BRACKET);
-
-			ExpressionList elements;
-			TRY(emptyExpressionList(&elements));
-			while (!nextTokenIs(tokens, TOKEN_TYPE_RIGHT_BRACKET)) {
-				TRY_LET(Expression, element, parseExpression, tokens);
-				TRY(appendToExpressionList(&elements, element));
-				if (!nextTokenIs(tokens, TOKEN_TYPE_RIGHT_BRACKET)) {
-					TRY(popToken(tokens, TOKEN_TYPE_COMMA, &next));
-				}
-			}
-			UNWRAP(popToken(tokens, TOKEN_TYPE_RIGHT_BRACKET, &next));
-			TRY_LET(Expression, list, listExpression, elements);
-
-			DEBUG_END;
-			DEBUG_END;
-			RETURN_OK(output, list);
+			return parseListLiteral(tokens, output);
 		}
-
 		case TOKEN_TYPE_KEYWORD_FOR: {
-			DEBUG_START("parsing for loop expression");
-
-			UNWRAP_LET(String, next, popToken, tokens, TOKEN_TYPE_KEYWORD_FOR);
-			TRY_LET(String, binding, popToken, tokens, TOKEN_TYPE_IDENTIFIER);
-			TRY(popToken(tokens, TOKEN_TYPE_KEYWORD_IN, &next));
-			TRY_LET(Expression, list, parseExpression, tokens);
-			TRY_LET(Block, body, parseBlock, tokens);
-
-			ForLoop* forLoop = malloc(sizeof(ForLoop));
-			*forLoop = (ForLoop) {
-				.binding = binding,
-				.list = list,
-				.body = body,
-			};
-
-			Expression loop = (Expression) {
-				.type = EXPRESSION_FOR_LOOP,
-				.data = (ExpressionData) {
-					.forLoop = forLoop,
-				},
-			};
-			DEBUG_END;
-			DEBUG_END;
-			RETURN_OK(output, loop);
+			return parseForLoop(tokens, output);
 		}
-
 		case TOKEN_TYPE_KEYWORD_WHILE: {
-			DEBUG_START("parsing while loop expression");
-
-			UNWRAP_LET(String, next, popToken, tokens, TOKEN_TYPE_KEYWORD_WHILE);
-			TRY_LET(Expression, condition, parseExpression, tokens);
-			TRY_LET(Block, body, parseBlock, tokens);
-
-			WhileLoop* whileLoop = malloc(sizeof(WhileLoop));
-			*whileLoop = (WhileLoop) {
-				.condition = condition,
-				.body = body,
-			};
-
-			Expression loop = (Expression) {
-				.type = EXPRESSION_WHILE_LOOP,
-				.data = (ExpressionData) {
-					.whileLoop = whileLoop,
-				},
-			};
-			DEBUG_END;
-			DEBUG_END;
-			RETURN_OK(output, loop);
+			return parseWhileLoop(tokens, output);
 		}
-
 		case TOKEN_TYPE_KEYWORD_IF: {
-			DEBUG_START("parsing if expression");
-
-			UNWRAP_LET(String, next, popToken, tokens, TOKEN_TYPE_KEYWORD_IF);
-			TRY_LET(Expression, condition, parseExpression, tokens);
-			TRY_LET(Block, body, parseBlock, tokens);
-
-			IfExpression* ifExpression = malloc(sizeof(IfExpression));
-			*ifExpression = (IfExpression) {
-				.condition = condition,
-				.body = body,
-			};
-
-			Expression loop = (Expression) {
-				.type = EXPRESSION_IF,
-				.data = (ExpressionData) {
-					.ifExpression = ifExpression,
-				},
-			};
-			DEBUG_END;
-			DEBUG_END;
-			RETURN_OK(output, loop);
+			return parseIfExpression(tokens, output);
 		}
-
-		// Object literal
 		case TOKEN_TYPE_LEFT_BRACE: {
-			TRY_LET(Expression, object, parseObjectLiteral, tokens);
-			DEBUG_END;
-			RETURN_OK(output, object);
+			return parseObjectLiteral(tokens, output);
 		}
-
-		// Number
 		case TOKEN_TYPE_NUMBER: {
-			UNWRAP_LET(String, numberString, popToken, tokens, TOKEN_TYPE_NUMBER);
-			TRY_LET(Expression, expression, numberExpression, atof(numberString));
-			DEBUG_END;
-			RETURN_OK(output, expression);
+			return parseNumberLiteral(tokens, output);
 		}
-
-		// Block
 		case TOKEN_TYPE_KEYWORD_DO: {
-			String next;
-			TRY(popToken(tokens, TOKEN_TYPE_KEYWORD_DO, &next));
-
-			Block block;
-			TRY(parseBlock(tokens, &block));
-			Block* heapBlock = malloc(sizeof(Block));
-			*heapBlock = block;
-
-			Expression expression = (Expression) {
-				.type = EXPRESSION_BLOCK,
-				.data = (ExpressionData) {
-					.block = heapBlock,
-				},
-			};
-
-			DEBUG_END;
-			RETURN_OK(output, expression);
+			return parseDoBlock(tokens, output);
 		}
-
-		// False
-		case TOKEN_TYPE_KEYWORD_FALSE: {
-			String next;
-			TRY(popToken(tokens, TOKEN_TYPE_KEYWORD_FALSE, &next));
-			TRY_LET(Expression, expression, booleanExpression, false);
-			DEBUG_END;
-			RETURN_OK(output, expression);
-		}
-
-		// True
-		case TOKEN_TYPE_KEYWORD_TRUE: {
-			String next;
-			TRY(popToken(tokens, TOKEN_TYPE_KEYWORD_TRUE, &next));
-			TRY_LET(Expression, expression, booleanExpression, true);
-			DEBUG_END;
-			RETURN_OK(output, expression);
-		}
-
-		// Function
 		case TOKEN_TYPE_KEYWORD_FUNCTION: {
-			DEBUG_START("parsing function declaration expression");
-			String next;
-			TRY(popToken(tokens, TOKEN_TYPE_KEYWORD_FUNCTION, &next));
-
-			// Parameters
-			ParameterList parameters;
-			TRY(emptyParameterList(&parameters));
-
-			TRY(popToken(tokens, TOKEN_TYPE_LEFT_PARENTHESIS, &next));
-
-			DEBUG_START("parsing function parameters");
-			while (!nextTokenIs(tokens, TOKEN_TYPE_RIGHT_PARENTHESIS)) {
-				String name;
-				TRY(popToken(tokens, TOKEN_TYPE_IDENTIFIER, &name));
-
-				TRY(popToken(tokens, TOKEN_TYPE_COLON, &next));
-
-				Type type;
-				TRY(parseType(tokens, &type));
-
-				Parameter parameter = (Parameter) {
-					.type = type,
-					.name = name,
-				};
-
-				TRY(appendToParameterList(&parameters, parameter));
-
-				if (!nextTokenIs(tokens, TOKEN_TYPE_RIGHT_PARENTHESIS)) {
-					TRY(popToken(tokens, TOKEN_TYPE_COMMA, &next));
-				}
-			}
-			UNWRAP(popToken(tokens, TOKEN_TYPE_RIGHT_PARENTHESIS, &next));
-			DEBUG_END;
-
-			// Return type
-			TRY(popToken(tokens, TOKEN_TYPE_COLON, &next));
-			Type returnType;
-			TRY(parseType(tokens, &returnType));
-
-			// Body
-			Block body;
-			TRY(parseBlock(tokens, &body));
-
-			// Create function
-			Function function = (Function) {
-				.parameters = parameters,
-				.returnType = returnType,
-				.body = body,
-			};
-
-			// Create expression
-			Expression expression = (Expression) {
-				.type = EXPRESSION_FUNCTION,
-				.data = (ExpressionData) {
-					.function = function,
-				},
-			};
-
-			DEBUG_END;
-			DEBUG_END;
-			RETURN_OK(output, expression);
+			return parseFunctionLiteral(tokens, output);
 		}
-
-		case TOKEN_TYPE_KEYWORD_TYPE: {
-			String next;
-			TRY(popToken(tokens, TOKEN_TYPE_KEYWORD_TYPE, &next));
-
-			// Fields
-			ParameterList fields;
-			emptyParameterList(&fields);
-
-			TRY(popToken(tokens, TOKEN_TYPE_LEFT_BRACE, &next));
-			while (!nextTokenIs(tokens, TOKEN_TYPE_RIGHT_BRACE)) {
-
-				// Field name
-				String fieldName;
-				TRY(popToken(tokens, TOKEN_TYPE_IDENTIFIER, &fieldName));
-
-				// Colon
-				TRY(popToken(tokens, TOKEN_TYPE_COLON, &next));
-
-				// Field type
-				Type fieldType;
-				TRY(parseType(tokens, &fieldType));
-
-				// Parameter
-				Parameter parameter = (Parameter) {
-					.name = fieldName,
-					.type = fieldType,
-				};
-				TRY(appendToParameterList(&fields, parameter));
-
-				// Comma
-				if (!nextTokenIs(tokens, TOKEN_TYPE_RIGHT_BRACE)) {
-					TRY(popToken(tokens, TOKEN_TYPE_COMMA, &next));
-				}
-			}
-			TRY(popToken(tokens, TOKEN_TYPE_RIGHT_BRACE, &next));
-
-			Expression expression = (Expression) {
-				.type = EXPRESSION_TYPE,
-				.data = (ExpressionData) {
-					.typeDeclaration = (TypeDeclaration) {
-						.fields = fields,
-					},
-				},
-			};
-
-			DEBUG_END;
-			RETURN_OK(output, expression);
+		case TOKEN_TYPE_LEFT_PARENTHESIS: {
+			return parseParenthesizedExpression(tokens, output);
 		}
-
-		// Not a literal
 		default: {
 			RETURN_ERROR("Expected literal but found %s", tokenTypeName(nextTokenType));
 		}
@@ -567,29 +751,12 @@ static BinaryOperator ASSIGNMENT = (BinaryOperator) {
 	.tokenTypeCount = 1,
 };
 
-PRIVATE Result parseBinaryOperation(TokenList* tokens, BinaryOperator operator, Expression * output);
-PRIVATE Result parsePrefixExpression(TokenList* tokens, Expression* output);
-
 PRIVATE Result parsePrecedentBinaryOperation(TokenList* tokens, BinaryOperator operator, Expression * output) {
 	if (operator.precedent == NULL) {
 		return parsePrefixExpression(tokens, output);
 	}
 
 	return parseBinaryOperation(tokens, *operator.precedent, output);
-}
-
-PRIVATE bool nextTokenIsOneOf(TokenList* tokens, TokenType* options, size_t optionCount) {
-	if (isTokenListEmpty(*tokens)) {
-		return false;
-	}
-
-	for (size_t index = 0; index < optionCount; index++) {
-		if (nextTokenIs(tokens, options[index])) {
-			return true;
-		}
-	}
-
-	return false;
 }
 
 PRIVATE Result binaryOperationOf(String tokenValue, BinaryOperation* output) {
@@ -618,15 +785,12 @@ PRIVATE Result binaryOperationOf(String tokenValue, BinaryOperation* output) {
 }
 
 PRIVATE Result parseFieldAccess(TokenList* tokens, Expression* output) {
-	TRY_LET(Expression, left, parseLiteral, tokens);
-
-	String next;
+	TRY_LET(Expression left, parseLiteral(tokens, &left), "");
 
 	while (nextTokenIs(tokens, TOKEN_TYPE_DOT)) {
-		DEBUG_START("parsing field access expression");
-		UNWRAP(popToken(tokens, TOKEN_TYPE_DOT, &next));
+		UNWRAP_LET(String next, popToken(tokens, TOKEN_TYPE_DOT, &next));
 		Expression* right = malloc(sizeof(Expression));
-		TRY(parseLiteral(tokens, right));
+		TRY(parseIdentifierLiteral(tokens, right), "parsing the right-hand sde of a field access expression");
 
 		Expression* newLeft = malloc(sizeof(Expression));
 		*newLeft = left;
@@ -640,27 +804,21 @@ PRIVATE Result parseFieldAccess(TokenList* tokens, Expression* output) {
 				},
 			},
 		};
-		DEBUG_END;
 	}
 
 	RETURN_OK(output, left);
 }
 
 PRIVATE Result parseBinaryOperation(TokenList* tokens, BinaryOperator operator, Expression * output) {
+	TRY_LET(Expression left, parsePrecedentBinaryOperation(tokens, operator, & left), "");
 
-	Expression left;
-	TRY(parsePrecedentBinaryOperation(tokens, operator, & left));
-
-	String next;
 	while (nextTokenIsOneOf(tokens, operator.tokenTypes, operator.tokenTypeCount)) {
-		UNWRAP(popAnyToken(tokens, &next));
+		UNWRAP_LET(String next, popAnyToken(tokens, &next));
 
-		DEBUG_START("parsing binary expression \"%s\"", next);
-		BinaryOperation operation;
-		TRY(binaryOperationOf(next, &operation));
+		TRY_LET(BinaryOperation operation, binaryOperationOf(next, &operation), "getting a binary operation");
 
 		Expression* right = malloc(sizeof(Expression));
-		TRY(parsePrecedentBinaryOperation(tokens, operator, right));
+		TRY(parsePrecedentBinaryOperation(tokens, operator, right), "parsing the right-hand side of a binary operation");
 
 		Expression* newLeft = malloc(sizeof(Expression));
 		*newLeft = left;
@@ -675,8 +833,6 @@ PRIVATE Result parseBinaryOperation(TokenList* tokens, BinaryOperator operator, 
 				},
 			},
 		};
-
-		DEBUG_END;
 	}
 
 	RETURN_OK(output, left);
@@ -687,27 +843,25 @@ PRIVATE Result parseExpression(TokenList* tokens, Expression* output) {
 }
 
 PRIVATE Result parsePostfixExpression(TokenList* tokens, Expression* output) {
-	TRY_LET(Expression, expression, parseFieldAccess, tokens);
+	TRY_LET(Expression expression, parseFieldAccess(tokens, &expression), "");
 
 	while (nextTokenIs(tokens, TOKEN_TYPE_LEFT_PARENTHESIS)) {
-		DEBUG_START("parsing postfix expression");
-
-		TRY_LET(String, next, popToken, tokens, TOKEN_TYPE_LEFT_PARENTHESIS);
+		UNWRAP_LET(String next, popToken(tokens, TOKEN_TYPE_LEFT_PARENTHESIS, &next));
 
 		// Parse arguments
 		ExpressionList arguments;
-		TRY(emptyExpressionList(&arguments));
+		TRY(emptyExpressionList(&arguments), "creating a function call's argument list");
 		while (!nextTokenIs(tokens, TOKEN_TYPE_RIGHT_PARENTHESIS)) {
-			TRY_LET(Expression, argument, parseExpression, tokens);
-			TRY(appendToExpressionList(&arguments, argument));
+			TRY_LET(Expression argument, parseExpression(tokens, &argument), "parsing a function call's argument");
+			TRY(appendToExpressionList(&arguments, argument), "appending to a function call's argument list");
 
 			// Comma
 			if (!nextTokenIs(tokens, TOKEN_TYPE_RIGHT_PARENTHESIS)) {
-				TRY(popToken(tokens, TOKEN_TYPE_COMMA, &next));
+				TRY(popToken(tokens, TOKEN_TYPE_COMMA, &next), "attempting to consume a comma after a function call's argument");
 			}
 		}
 
-		TRY(popToken(tokens, TOKEN_TYPE_RIGHT_PARENTHESIS, &next));
+		TRY(popToken(tokens, TOKEN_TYPE_RIGHT_PARENTHESIS, &next), "parsing the closing parentheses on a function call");
 
 		UnaryExpression* unary = malloc(sizeof(UnaryExpression));
 		ASSERT_NONNULL(unary);
@@ -727,19 +881,34 @@ PRIVATE Result parsePostfixExpression(TokenList* tokens, Expression* output) {
 				.unary = unary,
 			},
 		};
-
-		DEBUG_END;
 	}
 
 	RETURN_OK(output, expression);
 }
 
+/**
+ * Parses a `prefix expression`.
+ *
+ * Syntax: `"not" <expression>`
+ *
+ * # Parameters
+ *
+ * - `tokens` - The token list to parse from
+ * - `output` - Where to place the parsed output
+ *
+ * # Returns
+ *
+ * A result, indicating success or failure. If failed, contains the error message.
+ *
+ * # Errors
+ *
+ * If an unexpected token was encountered (including the token stream running out of tokens
+ * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
+ */
 PRIVATE Result parsePrefixExpression(TokenList* tokens, Expression* output) {
 	if (nextTokenIs(tokens, TOKEN_TYPE_KEYWORD_NOT)) {
-		DEBUG_START("parsing prefix expression");
-
-		UNWRAP_LET(String, next, popToken, tokens, TOKEN_TYPE_KEYWORD_NOT);
-		TRY_LET(Expression, inner, parsePrefixExpression, tokens);
+		UNWRAP_LET(String next, popToken(tokens, TOKEN_TYPE_KEYWORD_NOT, &next));
+		TRY_LET(Expression inner, parsePrefixExpression(tokens, &inner), "parsing the inside of a unary not expression");
 
 		UnaryExpression* unary = malloc(sizeof(UnaryExpression));
 		ASSERT_NONNULL(unary);
@@ -756,100 +925,169 @@ PRIVATE Result parsePrefixExpression(TokenList* tokens, Expression* output) {
 			},
 		};
 
-		DEBUG_END;
 		RETURN_OK(output, expression);
 	}
 
 	return parsePostfixExpression(tokens, output);
 }
 
-PRIVATE Result parseDeclaration(TokenList* tokens, Declaration* output) {
-	String next;
-	TRY(popToken(tokens, TOKEN_TYPE_KEYWORD_LET, &next));
+/**
+ * Parses a `declaration statement`.
+ *
+ * Syntax: `"let" <identifier> (":" <type>)? "=" <expression> ";"`
+ *
+ * # Parameters
+ *
+ * - `tokens` - The token list to parse from
+ * - `output` - Where to place the parsed output
+ *
+ * # Returns
+ *
+ * A result, indicating success or failure. If failed, contains the error message.
+ *
+ * # Errors
+ *
+ * If an unexpected token was encountered (including the token stream running out of tokens
+ * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
+ */
+PRIVATE Result parseDeclaration(TokenList* tokens, Statement* output) {
+	// let
+	TRY_LET(String next, popToken(tokens, TOKEN_TYPE_KEYWORD_LET, &next), "parsing the keyword let in a declaration");
 
 	// Name
-	String name;
-	TRY(popToken(tokens, TOKEN_TYPE_IDENTIFIER, &name));
+	TRY_LET(String name, popToken(tokens, TOKEN_TYPE_IDENTIFIER, &name), "parsing the name of a declaration");
 
-	// Type
+	// :type
 	Type* type = NULL;
-	TokenType nextTokenType;
-	TRY(peekTokenType(tokens, &nextTokenType));
+	TRY_LET(TokenType nextTokenType, peekTokenType(tokens, &nextTokenType), "peeking the next token after the name of a variable declaration");
 	if (nextTokenType == TOKEN_TYPE_COLON) {
-		TRY(popToken(tokens, TOKEN_TYPE_COLON, &next));
+		UNWRAP(popToken(tokens, TOKEN_TYPE_COLON, &next));
 		type = malloc(sizeof(Type));
-		TRY(parseType(tokens, type));
+		TRY(parseType(tokens, type), "parsing the type annotation on a variable declaration");
 	}
 
-	// Value
-	TRY(popToken(tokens, TOKEN_TYPE_EQUALS, &next));
-	Expression value;
-	TRY(parseExpression(tokens, &value));
+	// = value
+	TRY(popToken(tokens, TOKEN_TYPE_EQUALS, &next), "parsing the equal sign in a variable declaration");
+	TRY_LET(Expression value, parseExpression(tokens, &value), "parsing the value of a variable declaration");
+
+	// Semicolon
+	TRY(popToken(tokens, TOKEN_TYPE_SEMICOLON, &next), "parsing a semicolon after a declaration");
 
 	// Allocate & return
-	Declaration declaration = (Declaration) {
-		.name = name,
-		.type = type,
-		.value = value,
+	Statement statement = (Statement) {
+		.type = STATEMENT_DECLARATION,
+		.data = (StatementData) {
+			.declaration = (Declaration) {
+				.name = name,
+				.type = type,
+				.value = value,
+			},
+		},
 	};
-	RETURN_OK(output, declaration);
+	RETURN_OK(output, statement);
 }
 
-PRIVATE Result parseStatement(TokenList* tokens, Statement* output) {
-	DEBUG_START("parsing statement");
+/**
+ * Parses a `return statement`.
+ *
+ * Syntax: `"return" <expression>? ";"`
+ *
+ * # Parameters
+ *
+ * - `tokens` - The token list to parse from
+ * - `output` - Where to place the parsed output
+ *
+ * # Returns
+ *
+ * A result, indicating success or failure. If failed, contains the error message.
+ *
+ * # Errors
+ *
+ * If an unexpected token was encountered (including the token stream running out of tokens
+ * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
+ */
+PRIVATE Result parseReturnStatement(TokenList* tokens, Statement* output) {
+	TRY_LET(String next, popToken(tokens, TOKEN_TYPE_KEYWORD_RETURN, &next), "parsing the keyword return in a return statement");
+	Expression expression;
+	TRY(parseExpression(tokens, &expression), "parsing the expression in a return statement");
+	Statement statement = (Statement) {
+		.type = STATEMENT_RETURN,
+		.data = (StatementData) {
+			.returnExpression = expression,
+		},
+	};
+	TRY(popToken(tokens, TOKEN_TYPE_SEMICOLON, &next), "consuming the semicolon after a return statement");
+	RETURN_OK(output, statement);
+}
 
-	TokenType nextTokenType;
-	TRY(peekTokenType(tokens, &nextTokenType));
+/**
+ * Parses an `expression statement`.
+ *
+ * Syntax: `<expression> ";"`
+ *
+ * # Parameters
+ *
+ * - `tokens` - The token list to parse from
+ * - `output` - Where to place the parsed output
+ *
+ * # Returns
+ *
+ * A result, indicating success or failure. If failed, contains the error message.
+ *
+ * # Errors
+ *
+ * If an unexpected token was encountered (including the token stream running out of tokens
+ * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
+ */
+PRIVATE Result parseExpressionStatement(TokenList* tokens, Statement* output) {
+	TRY_LET(Expression expression, parseExpression(tokens, &expression), "parsing a statement's expression");
+	Statement statement = (Statement) {
+		.type = STATEMENT_EXPRESSION,
+		.data = (StatementData) {
+			.expression = expression,
+		},
+	};
+	TRY_LET(String next, popToken(tokens, TOKEN_TYPE_SEMICOLON, &next), "consuming the semicolon after an expression statement");
+	RETURN_OK(output, statement);
+}
+
+/**
+ * Parses a `statement`.
+ *
+ * Syntax:
+ *
+ * ```
+ * <statement> ::= <declaration> |
+ *                 <return-statement> |
+ *                 (<expression> ";")
+ * ```
+ *
+ * # Parameters
+ *
+ * - `tokens` - The token list to parse from
+ * - `output` - Where to place the parsed output
+ *
+ * # Returns
+ *
+ * A result, indicating success or failure. If failed, contains the error message.
+ *
+ * # Errors
+ *
+ * If an unexpected token was encountered (including the token stream running out of tokens
+ * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
+ */
+PRIVATE Result parseStatement(TokenList* tokens, Statement* output) {
+	TRY_LET(TokenType nextTokenType, peekTokenType(tokens, &nextTokenType), "peeking the next token type");
 
 	switch (nextTokenType) {
 		case TOKEN_TYPE_KEYWORD_LET: {
-			DEBUG_START("parsing declaration");
-			Declaration declaration;
-			TRY(parseDeclaration(tokens, &declaration));
-			Statement statement = (Statement) {
-				.type = STATEMENT_DECLARATION,
-				.data = (StatementData) {
-					.declaration = declaration,
-				},
-			};
-			String next;
-			TRY(popToken(tokens, TOKEN_TYPE_SEMICOLON, &next));
-			DEBUG_END;
-			DEBUG_END;
-			RETURN_OK(output, statement);
+			return parseDeclaration(tokens, output);
 		}
 		case TOKEN_TYPE_KEYWORD_RETURN: {
-			DEBUG_START("parsing return statement");
-			UNWRAP_LET(String, next, popToken, tokens, TOKEN_TYPE_KEYWORD_RETURN);
-			Expression expression;
-			TRY(parseExpression(tokens, &expression));
-			Statement statement = (Statement) {
-				.type = STATEMENT_RETURN,
-				.data = (StatementData) {
-					.returnExpression = expression,
-				},
-			};
-			TRY(popToken(tokens, TOKEN_TYPE_SEMICOLON, &next));
-			DEBUG_END;
-			DEBUG_END;
-			RETURN_OK(output, statement);
+			return parseReturnStatement(tokens, output);
 		}
 		default: {
-			DEBUG_START("parsing expression statement");
-
-			Expression expression;
-			TRY(parseExpression(tokens, &expression));
-			Statement statement = (Statement) {
-				.type = STATEMENT_EXPRESSION,
-				.data = (StatementData) {
-					.expression = expression,
-				},
-			};
-			String next;
-			TRY(popToken(tokens, TOKEN_TYPE_SEMICOLON, &next));
-			DEBUG_END;
-			DEBUG_END;
-			RETURN_OK(output, statement);
+			return parseExpressionStatement(tokens, output);
 		}
 	}
 }
@@ -874,84 +1112,14 @@ PRIVATE Result parseStatement(TokenList* tokens, Statement* output) {
  */
 Result parse(TokenList* tokens, Program* output) {
 	StatementList statements;
-	TRY(emptyStatementList(&statements));
+	TRY(emptyStatementList(&statements), "creating the programs statement list");
 	while (!isTokenListEmpty(*tokens)) {
 		Statement statement;
-		TRY(parseStatement(tokens, &statement));
-		TRY(appendToStatementList(&statements, statement));
+		TRY(parseStatement(tokens, &statement), "parsing a top-level statement in the program");
+		TRY(appendToStatementList(&statements, statement), "appending to the program's statement list");
 	}
 
 	RETURN_OK(output, (Program) {.statements = statements});
-}
-
-PRIVATE void freeExpression(Expression expression) {
-	switch (expression.type) {
-		case EXPRESSION_OBJECT: {
-
-			// Free internals
-			FOR_EACH(InternalField internalField, expression.data.object->internals) {
-				free(internalField.value);
-			}
-			END;
-			free(expression.data.object->internals.data);
-
-			free(expression.data.object->fields.data);
-			free(expression.data.object);
-			break;
-		}
-		case EXPRESSION_UNARY: {
-			free(expression.data.unary);
-		}
-	}
-}
-
-PRIVATE void freeStatement(Statement statement) {
-	switch (statement.type) {
-		case STATEMENT_DECLARATION: {
-			free(statement.data.declaration.name);
-			break;
-		};
-		case STATEMENT_EXPRESSION: {
-			freeExpression(statement.data.expression);
-			break;
-		}
-	}
-}
-
-String expressionTypeName(ExpressionType type) {
-	switch (type) {
-		case EXPRESSION_IDENTIFIER:
-			return "identifier";
-		case EXPRESSION_OBJECT:
-			return "object literal";
-		case EXPRESSION_BINARY:
-			return "binary expression";
-		case EXPRESSION_FUNCTION:
-			return "function literal";
-		case EXPRESSION_BLOCK:
-			return "block expression";
-		case EXPRESSION_UNARY:
-			return "unary expression";
-		case EXPRESSION_BUILTIN_FUNCTION:
-			return "builtin function";
-		case EXPRESSION_TYPE:
-			return "type";
-		case EXPRESSION_WHILE_LOOP:
-			return "while loop expression";
-		case EXPRESSION_FOR_LOOP:
-			return "for loop expression";
-		case EXPRESSION_IF:
-			return "if expression";
-	}
-}
-
-void freeProgram(Program program) {
-	FOR_EACH(Statement statement, program.statements) {
-		freeStatement(statement);
-	}
-	END;
-
-	free(program.statements.data);
 }
 
 IMPLEMENT_LIST(Declaration)
@@ -959,4 +1127,6 @@ IMPLEMENT_LIST(Statement)
 IMPLEMENT_LIST(Expression)
 IMPLEMENT_LIST(Parameter)
 IMPLEMENT_LIST(Field)
-IMPLEMENT_LIST(InternalField)
+IMPLEMENT_LIST(Internal)
+IMPLEMENT_LIST(ValueField)
+IMPLEMENT_LIST(Value)

@@ -10,5 +10,8 @@ CompileFlags:
     -Wno-switch-default, 
     -Wno-unsafe-buffer-usage, 
     -Wno-declaration-after-statement, 
-    -Wno-switch-enum
+    -Wno-switch-enum,
+    -Wno-implicit-int-float-conversion,
+    -Wno-unused-macros,
+    -Wno-c++98-compat-pedantic
   ]

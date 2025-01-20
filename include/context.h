@@ -8,10 +8,17 @@ typedef struct Scope Scope;
 
 DEFINE_LIST(Scope)
 
+typedef struct {
+	String name;
+	Value value;
+} ScopeDeclaration;
+
+DEFINE_LIST(ScopeDeclaration)
+
 struct Scope {
 	Scope* parent;
 	ScopeList children;
-	DeclarationList variables;
+	ScopeDeclarationList variables;
 };
 
 typedef struct Context Context;
@@ -19,7 +26,6 @@ struct Context {
 	Scope* scope;
 	Scope globalScope;
 	int debugIndent;
-	StringList errorStackTrace;
 };
 
 /**
@@ -60,7 +66,7 @@ Result newContext(Context* output);
  * scopes), an error is returned. If the given `scope` or `name` is `NULL`,
  * an error is returned.
  */
-Result declareNewVariable(Scope* scope, Declaration declaration);
+Result declareNewVariable(Scope* scope, ScopeDeclaration declaration);
 
 /**
  * Returns a pointer to the `Expression` value stored in the variable with the
@@ -85,9 +91,9 @@ Result declareNewVariable(Scope* scope, Declaration declaration);
  * If no variable exists with the given name in the given scope,
  * an error is returned.
  */
-Result getVariable(Scope scope, char* name, Expression** output);
-Result setVariable(Scope* scope, Declaration declaration);
-Result reassignVariable(Scope* scope, Declaration declaration);
+Result getVariable(Scope scope, char* name, Value** output);
+Result setVariable(Scope* scope, ScopeDeclaration declaration);
+Result reassignVariable(Scope* scope, ScopeDeclaration declaration);
 
 Result enterNewScope(void);
 Result exitScope(void);

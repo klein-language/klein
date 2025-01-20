@@ -1,304 +1,183 @@
 #include "../include/sugar.h"
 #include "../include/builtin.h"
-#include "../include/context.h"
 #include "../include/parser.h"
 
-/**
- * Converts a C String (null-terminated `char*`) into a Klein string literal.
- *
- * The opposite of this function is `getString()`, which converts a Klein string
- * literal expression back into a C string. In other words, `getString()` can be
- * used on the output of `stringExpression()` to get the original string back.
- *
- * # Parameters
- *
- * - `value` - The C string to convert. It must live at least as long as
- *   `output`, otherwise accessing output is undefined behavior.
- *
- * - `output`- The place to store the created Klein `Expression`. It is only
- *   valid as long as `value` is valid.
- *
- * # Errors
- *
- * If memory fails to allocate, an error is returned.
- * If built-in properties on Strings such as `length()` fail to be found, an
- * error is returned.
- */
-Result stringExpression(String value, Expression* output) {
+Result stringValue(String string, Value* output) {
 
 	// Internals
-	InternalFieldList internals;
-	TRY(emptyInternalFieldList(&internals));
+	InternalList internals;
+	TRY(emptyInternalList(&internals), "creating the internal field list for a string expression");
 	String* pointer = malloc(sizeof(String));
-	*pointer = value;
-	TRY(appendToInternalFieldList(&internals, (InternalField) {.name = "string_value", .value = pointer}));
+	*pointer = string;
+	TRY(appendToInternalList(&internals, (Internal) {.key = INTERNAL_KEY_STRING, .value = pointer}), "appending a string's value to its internal fields");
 
 	// Fields
-	FieldList fields;
-	TRY(emptyFieldList(&fields));
+	ValueFieldList* fields;
+	TRY(emptyHeapValueFieldList(&fields), "creating the field list for a string expression");
 
 	// .length()
 	BuiltinFunction function;
-	TRY(getBuiltin("String.length", &function));
-	Expression length = (Expression) {
-		.type = EXPRESSION_BUILTIN_FUNCTION,
-		.data = (ExpressionData) {
-			.builtinFunction = (BuiltinFunctionExpression) {
-				.function = function,
-				.thisObject = NULL,
-			},
-		},
-	};
-	TRY(appendToFieldList(&fields, (Field) {.name = "length", .value = length}));
+	TRY(getBuiltin("String.length", &function), "getting the built-in function String.length()");
+	TRY_LET(Value length, builtinFunctionToValue(function, &length), "converting a builtin function to a value");
+	TRY(appendToValueFieldList(fields, (ValueField) {.name = "length", .value = length}), "appending the function String.length() to a string's field list");
 
-	// Create object
-	Object* object = malloc(sizeof(Object));
-	ASSERT_NONNULL(object);
-	*object = (Object) {
-		.internals = internals,
+	// Create value
+	Value value = (Value) {
 		.fields = fields,
-	};
-	Expression expression = (Expression) {
-		.type = EXPRESSION_OBJECT,
-		.data = (ExpressionData) {
-			.object = object,
-		},
+		.internals = internals,
 	};
 
-	RETURN_OK(output, expression);
+	RETURN_OK(output, value);
 }
 
-/**
- * Takes a string value in Klein as an expression and retrieves the underlying
- * C string in it.
- *
- * # Parameters
- *
- * - `expression` - The string expression. If this is any expression other than
- *   a string, an error is returned.
- *
- * - `output` - The C string stored in the given expression. It points to the same
- *   string originally stored in the expression, most likely through `stringExpression()`,
- *   so it is only valid as long as that string is valid.
- */
-Result getString(Expression expression, String** output) {
-	if (expression.type != EXPRESSION_OBJECT) {
-		RETURN_ERROR("Attempted to interpret a %s as a string literal", expressionTypeName(expression.type));
-	}
-
-	return getObjectInternal(*expression.data.object, "string_value", (void**) output);
+Result getString(Value value, String** output) {
+	return getValueInternal(value, INTERNAL_KEY_STRING, (void**) output);
 }
 
-bool isString(Expression expression) {
+bool isString(Value value) {
 	String* output;
-	return isOk(getString(expression, &output));
+	return isOk(getString(value, &output));
 }
 
-bool isNumber(Expression expression) {
-	double* output;
-	return isOk(getNumber(expression, &output));
-}
-
-bool isBoolean(Expression expression) {
-	bool* output;
-	return isOk(getBoolean(expression, &output));
-}
-
-bool isList(Expression expression) {
-	ExpressionList* output;
-	return isOk(getList(expression, &output));
-}
-
-/**
- * Converts a C number (`double`) into a Klein number literal.
- *
- * The opposite of this function is `getNumber()`, which converts a Klein number
- * literal expression back into a double. In other words, `getNumber()` can be
- * used on the output of `numberExpression()` to get the original number back.
- *
- * The internal double will be stored on the heap, and the caller is responsible
- * for freeing it.
- *
- * This is the number equivalent to `stringExpression()`.
- *
- * # Parameters
- *
- * - `value` - The number to convert.
- *
- * - `output`- The place to store the created Klein `Expression`.
- *
- * # Errors
- *
- * If memory fails to allocate, an error is returned.
- * If built-in properties on numbers such as `abs()` fail to be found, an
- * error is returned.
- */
-Result numberExpression(double value, Expression* output) {
+Result numberValue(double number, Value* output) {
 
 	// Internals
-	InternalFieldList internals;
-	TRY(emptyInternalFieldList(&internals));
+	InternalList internals;
+	TRY(emptyInternalList(&internals), "creating the internal field list for a number expression");
 	double* heapValue = malloc(sizeof(double));
-	*heapValue = value;
-	TRY(appendToInternalFieldList(&internals, (InternalField) {.name = "number_value", .value = heapValue}));
+	*heapValue = number;
+	TRY(appendToInternalList(&internals, (Internal) {.key = INTERNAL_KEY_NUMBER, .value = heapValue}), "appending a number's value to its internal field list");
 
 	// Fields
-	FieldList fields;
-	TRY(emptyFieldList(&fields));
-
-	// .to()
-	Expression to = (Expression) {
-		.type = EXPRESSION_IDENTIFIER,
-		.data = (ExpressionData) {
-			.identifier = "range",
-		},
-	};
-	TRY(appendToFieldList(&fields, (Field) {.name = "to", .value = to}));
+	ValueFieldList* fields;
+	TRY(emptyHeapValueFieldList(&fields), "creating the field list for a number expression");
 
 	// .mod()
 	BuiltinFunction function;
-	TRY(getBuiltin("Number.mod", &function));
-	Expression mod = (Expression) {
-		.type = EXPRESSION_BUILTIN_FUNCTION,
-		.data = (ExpressionData) {
-			.builtinFunction = (BuiltinFunctionExpression) {
-				.function = function,
-				.thisObject = NULL,
-			},
-		},
-	};
-	TRY(appendToFieldList(&fields, (Field) {.name = "mod", .value = mod}));
+	TRY(getBuiltin("Number.mod", &function), "getting the builtin function Number.mod()");
+	TRY_LET(Value mod, builtinFunctionToValue(function, &mod), "converting the built-in function Number.mod() to a value");
+	TRY(appendToValueFieldList(fields, (ValueField) {.name = "mod", .value = mod}), "appending the field Number.mod() to a number's field list");
 
-	// Create object
-	Object* object = malloc(sizeof(Object));
-	ASSERT_NONNULL(object);
-	*object = (Object) {
-		.internals = internals,
+	// Create value
+	Value value = (Value) {
 		.fields = fields,
+		.internals = internals,
 	};
-
-	Expression expression = (Expression) {
-		.type = EXPRESSION_OBJECT,
-		.data = (ExpressionData) {
-			.object = object,
-		},
-	};
-
-	RETURN_OK(output, expression);
+	RETURN_OK(output, value);
 }
 
-/**
- * Takes a number in Klein as an expression and retrieves the underlying
- * double in it.
- *
- * # Parameters
- *
- * - `expression` - The number expression. If this is any expression other than
- *   a number, an error is returned.
- *
- * - `output` - The double stored in the given expression. It points to a double
- *   on the heap, so it's valid as long as the expression hasnt't explicitly
- *   freed it.
- */
-Result getNumber(Expression expression, double** output) {
-	if (expression.type != EXPRESSION_OBJECT) {
-		RETURN_ERROR("Attempted to interpret a %s as a number literal", expressionTypeName(expression.type));
-	}
-
-	return getObjectInternal(*expression.data.object, "number_value", (void**) output);
+Result getNumber(Value value, double** output) {
+	return getValueInternal(value, INTERNAL_KEY_NUMBER, (void**) output);
 }
 
-Result listExpression(ExpressionList values, Expression* output) {
+bool isNumber(Value value) {
+	double* output;
+	return isOk(getNumber(value, &output));
+}
+
+Result booleanValue(bool boolean, Value* output) {
 
 	// Internals
-	InternalFieldList internals;
-	TRY(emptyInternalFieldList(&internals));
-	ExpressionList* heapValues = malloc(sizeof(ExpressionList));
-	*heapValues = values;
-	TRY(appendToInternalFieldList(&internals, (InternalField) {.name = "elements", .value = heapValues}));
+	InternalList internals;
+	TRY(emptyInternalList(&internals), "creating the internal field list for a boolean expression");
+	bool* heapValue = malloc(sizeof(bool));
+	*heapValue = boolean;
+	TRY(appendToInternalList(&internals, (Internal) {.key = INTERNAL_KEY_BOOLEAN, .value = heapValue}), "appending the boolean value of a boolean expression to its internal fields");
 
 	// Fields
-	FieldList fields;
-	TRY(emptyFieldList(&fields));
+	ValueFieldList* fields;
+	TRY(emptyHeapValueFieldList(&fields), "creating the field list for a boolean expression");
+
+	// Create value
+	Value value = (Value) {
+		.fields = fields,
+		.internals = internals,
+	};
+	RETURN_OK(output, value);
+}
+
+Result getBoolean(Value value, bool** output) {
+	return getValueInternal(value, INTERNAL_KEY_BOOLEAN, (void**) output);
+}
+
+bool isBoolean(Value value) {
+	bool* output;
+	return isOk(getBoolean(value, &output));
+}
+
+Result listValue(ValueList values, Value* output) {
+
+	// Internals
+	InternalList internals;
+	TRY(emptyInternalList(&internals), "creating the internal field list for a list expression");
+	ValueList* heapValues = malloc(sizeof(ValueList));
+	*heapValues = values;
+	TRY(appendToInternalList(&internals, (Internal) {.key = INTERNAL_KEY_LIST, .value = heapValues}), "appending the internal list elements to a list expression's internal field list");
+
+	// Fields
+	ValueFieldList* fields;
+	TRY(emptyHeapValueFieldList(&fields), "creating the field list for a list expression");
 
 	// .append()
 	BuiltinFunction function;
-	TRY(getBuiltin("List.append", &function));
-	Expression append = (Expression) {
-		.type = EXPRESSION_BUILTIN_FUNCTION,
-		.data = (ExpressionData) {
-			.builtinFunction = (BuiltinFunctionExpression) {
-				.function = function,
-				.thisObject = NULL,
-			},
-		},
-	};
-	TRY(appendToFieldList(&fields, (Field) {.name = "append", .value = append}));
+	TRY(getBuiltin("List.append", &function), "getting the builtin function List.append()");
+	TRY_LET(Value append, builtinFunctionToValue(function, &append), "converting the builtin function List.append() to a value");
+	TRY(appendToValueFieldList(fields, (ValueField) {.name = "append", .value = append}), "appending the function List.append() to a list's field list");
 
-	// Create object
-	Object* object = malloc(sizeof(Object));
-	ASSERT_NONNULL(object);
-	*object = (Object) {
-		.internals = internals,
+	// Create value
+	Value value = (Value) {
 		.fields = fields,
+		.internals = internals,
 	};
-
-	Expression expression = (Expression) {
-		.type = EXPRESSION_OBJECT,
-		.data = (ExpressionData) {
-			.object = object,
-		},
-	};
-
-	RETURN_OK(output, expression);
+	RETURN_OK(output, value);
 }
 
-Result getList(Expression expression, ExpressionList** output) {
-	DEBUG_START("Getting internal list value");
-	if (expression.type != EXPRESSION_OBJECT) {
-		RETURN_ERROR("Attempted to interpret a %s as a list literal", expressionTypeName(expression.type));
-	}
-
-	TRY(getObjectInternal(*expression.data.object, "elements", (void**) output));
-	DEBUG_END;
-	return OK;
+Result getList(Value value, ValueList** output) {
+	return getValueInternal(value, INTERNAL_KEY_LIST, (void**) output);
 }
 
-Result booleanExpression(bool value, Expression* output) {
+bool isList(Value value) {
+	ValueList* output;
+	return isOk(getList(value, &output));
+}
 
-	// Internals
-	InternalFieldList internals;
-	TRY(emptyInternalFieldList(&internals));
-	bool* heapValue = malloc(sizeof(bool));
-	*heapValue = value;
-	TRY(appendToInternalFieldList(&internals, (InternalField) {.name = "boolean_value", .value = heapValue}));
-
+Result nullValue(Value* output) {
 	// Fields
-	FieldList fields;
-	TRY(emptyFieldList(&fields));
+	ValueFieldList* fields;
+	TRY(emptyHeapValueFieldList(&fields), "creating the field list for a null value");
 
-	// Create object
-	Object* object = malloc(sizeof(Object));
-	ASSERT_NONNULL(object);
-	*object = (Object) {
-		.internals = internals,
-		.fields = fields,
-	};
+	InternalList internals;
+	TRY(emptyInternalList(&internals), "creating null's internal list");
+	TRY(appendToInternalList(&internals, (Internal) {.key = INTERNAL_KEY_NULL, .value = NULL}), "appending to null's internal list");
 
-	Expression expression = (Expression) {
-		.type = EXPRESSION_OBJECT,
-		.data = (ExpressionData) {
-			.object = object,
-		},
-	};
-
-	RETURN_OK(output, expression);
+	Value result = (Value) {.fields = fields, .internals = internals};
+	RETURN_OK(output, result);
 }
 
-Result getBoolean(Expression expression, bool** output) {
-	if (expression.type != EXPRESSION_OBJECT) {
-		RETURN_ERROR("Attempted to interpret a %s as a boolean literal", expressionTypeName(expression.type));
-	}
+Result functionValue(Function value, Value* output) {
+	// Fields
+	ValueFieldList* fields;
+	TRY(emptyHeapValueFieldList(&fields), "creating the field list for a function value");
 
-	return getObjectInternal(*expression.data.object, "boolean_value", (void**) output);
+	InternalList internals;
+	TRY(emptyInternalList(&internals), "creating a function value's internal list");
+
+	Function* function = malloc(sizeof(Function));
+	*function = value;
+	TRY(appendToInternalList(&internals, (Internal) {.key = INTERNAL_KEY_FUNCTION, .value = function}), "appending to a function value's internal list");
+
+	Value result = (Value) {.fields = fields, .internals = internals};
+	RETURN_OK(output, result);
+}
+
+Result getFunction(Value value, Function** output) {
+	return getValueInternal(value, INTERNAL_KEY_FUNCTION, (void**) output);
+}
+
+bool isBuiltinFunction(Value value) {
+	return hasInternal(value, INTERNAL_KEY_BUILTIN_FUNCTION);
+}
+
+bool isNull(Value value) {
+	return hasInternal(value, INTERNAL_KEY_NULL);
 }

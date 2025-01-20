@@ -40,15 +40,13 @@ typedef char* String;
 #define UNDERLINE "4"
 #endif
 
-#define DEBUG_START(...)                                             \
-	do {                                                             \
-		int size = snprintf(NULL, 0, __VA_ARGS__);                   \
-		String buffer = malloc((unsigned long) size + 1);            \
-		sprintf(buffer, __VA_ARGS__);                                \
-		TRY(prependToStringList(&CONTEXT->errorStackTrace, buffer)); \
+#define FORMAT(output__, ...)                                 \
+	do {                                                      \
+		int size__ = snprintf(NULL, 0, __VA_ARGS__);          \
+		String buffer__ = malloc((unsigned long) size__ + 1); \
+		sprintf(buffer__, __VA_ARGS__);                       \
+		output__ = buffer__;                                  \
 	} while (0)
-
-#define DEBUG_END TRY(popStringList(&CONTEXT->errorStackTrace));
 
 #define MAX(x, y) (((x) >= (y)) ? (x) : (y))
 #define MIN(x, y) (((x) <= (y)) ? (x) : (y))

@@ -35,7 +35,7 @@ void printHelp(bool detailed) {
 	if (!detailed) {
 		fprintf(stderr, "\n %s\n\n", STYLE("Klein", CYAN, BOLD));
 		fprintf(stderr, " %s\n\n", "Poetry in programming.");
-		fprintf(stderr, " %s: %s %s %s %s\n\n", FORMAT("Usage", UNDERLINE), STYLE("klein", PURPLE, BOLD), STYLE("<COMMAND>", BLUE, BOLD), COLOR("[OPTIONS]", YELLOW), COLOR("[ARGUMENTS]", RED));
+		fprintf(stderr, " %s: %s %s %s %s\n\n", DECORATE("Usage", UNDERLINE), STYLE("klein", PURPLE, BOLD), STYLE("<COMMAND>", BLUE, BOLD), COLOR("[OPTIONS]", YELLOW), COLOR("[ARGUMENTS]", RED));
 
 		// Commands
 		fprintf(stderr, " %s\n", STYLE("Commands:", CYAN, BOLD));

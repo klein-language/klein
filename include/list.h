@@ -122,6 +122,10 @@ typedef char Char;
 	for (size_t index__ = 0; index__ < list__.size; index__++) { \
 		name__ = &list__.data[index__];
 
+#define FOR_EACH_REFP(name__, list__)                             \
+	for (size_t index__ = 0; index__ < list__->size; index__++) { \
+		name__ = &list__->data[index__];
+
 #define END }
 
 DEFINE_LIST(Char)

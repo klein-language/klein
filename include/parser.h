@@ -1,7 +1,6 @@
 #ifndef PARSER_H
 #define PARSER_H
 
-#include "builtin.h"
 #include "lexer.h"
 #include "list.h"
 #include "result.h"
@@ -28,10 +27,12 @@ typedef enum {
 	EXPRESSION_UNARY,
 	EXPRESSION_IDENTIFIER,
 	EXPRESSION_BUILTIN_FUNCTION,
-	EXPRESSION_TYPE,
 	EXPRESSION_OBJECT,
 	EXPRESSION_FOR_LOOP,
 	EXPRESSION_WHILE_LOOP,
+	EXPRESSION_STRING,
+	EXPRESSION_NUMBER,
+	EXPRESSION_LIST,
 	EXPRESSION_IF
 } ExpressionType;
 
@@ -49,11 +50,6 @@ typedef struct {
 } Parameter;
 
 DEFINE_LIST(Parameter)
-
-typedef struct {
-	Expression* thisObject;
-	BuiltinFunction function;
-} BuiltinFunctionExpression;
 
 struct Function {
 	/**
@@ -122,8 +118,6 @@ typedef union {
 
 	bool boolean;
 
-	BuiltinFunctionExpression builtinFunction;
-
 	TypeDeclaration typeDeclaration;
 
 	Object* object;
@@ -131,6 +125,10 @@ typedef union {
 	ForLoop* forLoop;
 
 	WhileLoop* whileLoop;
+
+	struct ExpressionList* list;
+
+	String string;
 
 	IfExpression* ifExpression;
 } ExpressionData;
@@ -157,21 +155,14 @@ struct UnaryExpression {
 };
 
 typedef struct {
-	String name;
-	void* value;
-} InternalField;
-
-typedef struct {
 	char* name;
 	Expression value;
 } Field;
 
 DEFINE_LIST(Field)
-DEFINE_LIST(InternalField)
 
 struct Object {
 	FieldList fields;
-	InternalFieldList internals;
 };
 
 typedef enum {
@@ -232,9 +223,6 @@ typedef struct {
 	StatementList statements;
 } Program;
 
-Result getObjectInternal(Object object, char* name, void** output);
-Result getObjectField(Object object, char* name, Expression** output);
-
 /**
  * Parses a program from a stream of tokens into an abstract syntax tree.
  *
@@ -254,8 +242,44 @@ Result getObjectField(Object object, char* name, Expression** output);
  * malformatted syntax), an error is returned.
  */
 Result parse(TokenList* tokens, Program* output);
-String expressionTypeName(ExpressionType type);
 void freeProgram(Program program);
 Result debugExpression(Expression expression);
+
+typedef enum {
+	INTERNAL_KEY_STRING,
+	INTERNAL_KEY_NUMBER,
+	INTERNAL_KEY_BOOLEAN,
+	INTERNAL_KEY_LIST,
+	INTERNAL_KEY_NULL,
+	INTERNAL_KEY_FUNCTION,
+	INTERNAL_KEY_THIS_OBJECT,
+	INTERNAL_KEY_BUILTIN_FUNCTION
+} InternalKey;
+
+typedef struct {
+	InternalKey key;
+	void* value;
+} Internal;
+
+DEFINE_LIST(Internal)
+
+typedef struct ValueFieldList ValueFieldList;
+
+typedef struct {
+	ValueFieldList* fields;
+	InternalList internals;
+} Value;
+
+Result getValueInternal(Value value, InternalKey key, void** output);
+Result getValueField(Value value, String name, Value** output);
+bool hasInternal(Value value, InternalKey key);
+
+typedef struct {
+	String name;
+	Value value;
+} ValueField;
+
+DEFINE_LIST(ValueField)
+DEFINE_LIST(Value)
 
 #endif

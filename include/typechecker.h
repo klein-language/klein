@@ -15,7 +15,7 @@ typedef union {
 typedef enum {
 	TYPE_LITERAL_FUNCTION,
 	TYPE_LITERAL_IDENTIFIER,
-	TYPE_LITERAL_TYPE_DECLARATION,
+	TYPE_LITERAL_TYPE_DECLARATION
 } TypeLiteralType;
 
 typedef struct {

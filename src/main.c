@@ -29,7 +29,7 @@
  * - `parse()` from `parser.h`
  * - `evaluate()` from `runner.h`
  */
-PRIVATE Result runFile(int numberOfArguments, String* arguments) {
+PRIVATE Result runFile(int numberOfArguments, String arguments[]) {
 	if (numberOfArguments < 2) {
 		return error("Not enough arguments to run");
 	}
@@ -74,7 +74,8 @@ PRIVATE Result runFile(int numberOfArguments, String* arguments) {
 	}
 
 	// Read source code
-	TRY_LET(String, rawSourceCode, readFile, filePath);
+	String rawSourceCode;
+	TRY(readFile(filePath, &rawSourceCode), "reading the program's main file");
 
 	// Stdlib
 	String sourceCode = malloc(strlen(rawSourceCode) + strlen(STDLIB) + 1);
@@ -86,22 +87,20 @@ PRIVATE Result runFile(int numberOfArguments, String* arguments) {
 	free(rawSourceCode);
 
 	// Tokenize
-	TRY_LET(TokenList, tokens, tokenize, sourceCode);
+	TokenList tokens;
+	TRY(tokenize(sourceCode, &tokens), "tokenizing the program's source code");
 	free(sourceCode);
 
 	// Context
 	CONTEXT = malloc(sizeof(Context));
-	TRY(newContext(CONTEXT));
+	TRY(newContext(CONTEXT), "creating the programs context");
 
 	// Parse
-	TRY_LET(Program, program, parse, &tokens);
+	Program program;
+	TRY(parse(&tokens, &program), "parsing the program");
 
 	// Run
-	TRY(run(program));
-
-	// Cleanup
-	freeProgram(program);
-	freeContext(*CONTEXT);
+	TRY(run(program), "running the program");
 
 	// Done
 	return OK;
@@ -113,7 +112,7 @@ PRIVATE Result runFile(int numberOfArguments, String* arguments) {
  * More specifically, main wraps *this* function, and converts the `Result` into
  * an exit code. This handles the main logic of the program.
  */
-PRIVATE Result mainWrapper(int numberOfArguments, char** arguments) {
+PRIVATE Result mainWrapper(int numberOfArguments, String arguments[]) {
 	if (numberOfArguments < 2) {
 		printHelp(false);
 		return OK;
@@ -146,15 +145,10 @@ PRIVATE Result mainWrapper(int numberOfArguments, char** arguments) {
  * The program's main entry point. Calls `mainWrapper` and converts the result into an exit
  * code.
  */
-int main(int numberOfArguments, char** arguments) {
+int main(int numberOfArguments, String arguments[]) {
 	Result attempt = mainWrapper(numberOfArguments, arguments);
 	if (isError(attempt)) {
-		fprintf(stderr, "\n%s %s\n", STYLE("Error:", RED, BOLD), attempt.errorMessage);
-		FOR_EACH(String line, CONTEXT->errorStackTrace) {
-			fprintf(stderr, "\t\033[2mwhile %s\033[0m\n", line);
-		}
-		END;
-		fprintf(stderr, "\n");
+		fprintf(stderr, "\n%s %s\n\n", STYLE("Error:", RED, BOLD), attempt.errorMessage);
 		return 1;
 	}
 
