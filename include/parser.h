@@ -13,7 +13,7 @@ typedef struct UnaryExpression UnaryExpression;
 typedef struct Object Object;
 typedef struct ForLoop ForLoop;
 typedef struct WhileLoop WhileLoop;
-typedef struct IfExpression IfExpression;
+typedef struct IfExpressionList IfExpressionList;
 
 typedef struct {
 	StatementList* statements;
@@ -21,6 +21,7 @@ typedef struct {
 } Block;
 
 typedef enum {
+	EXPRESSION_BOOLEAN,
 	EXPRESSION_BINARY,
 	EXPRESSION_FUNCTION,
 	EXPRESSION_BLOCK,
@@ -130,7 +131,7 @@ typedef union {
 
 	String string;
 
-	IfExpression* ifExpression;
+	IfExpressionList* ifExpression;
 } ExpressionData;
 
 struct Expression {
@@ -210,10 +211,10 @@ struct WhileLoop {
 	Block body;
 };
 
-struct IfExpression {
+typedef struct {
 	Expression condition;
 	Block body;
-};
+} IfExpression;
 
 /**
  * A program's abstract syntax tree.
@@ -281,5 +282,6 @@ typedef struct {
 
 DEFINE_LIST(ValueField)
 DEFINE_LIST(Value)
+DEFINE_LIST(IfExpression)
 
 #endif

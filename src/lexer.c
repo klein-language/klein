@@ -147,6 +147,12 @@ PRIVATE Result getNextToken(String sourceCode, Token* output) {
 			type = TOKEN_TYPE_KEYWORD_LET;
 		} else if (strcmp(identifier, "function") == 0) {
 			type = TOKEN_TYPE_KEYWORD_FUNCTION;
+		} else if (strcmp(identifier, "and") == 0) {
+			type = TOKEN_TYPE_KEYWORD_AND;
+		} else if (strcmp(identifier, "or") == 0) {
+			type = TOKEN_TYPE_KEYWORD_OR;
+		} else if (strcmp(identifier, "not") == 0) {
+			type = TOKEN_TYPE_KEYWORD_NOT;
 		} else if (strcmp(identifier, "do") == 0) {
 			type = TOKEN_TYPE_KEYWORD_DO;
 		} else if (strcmp(identifier, "type") == 0) {

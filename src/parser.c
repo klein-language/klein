@@ -491,16 +491,50 @@ PRIVATE Result parseIfExpression(TokenList* tokens, Expression* output) {
 	TRY_LET(Expression condition, parseExpression(tokens, &condition), "parsing the condition for an if expression");
 	TRY_LET(Block body, parseBlock(tokens, &body), "parsing the body of an if expression");
 
-	IfExpression* ifExpression = malloc(sizeof(IfExpression));
-	*ifExpression = (IfExpression) {
+	IfExpressionList* elseIfs;
+	TRY(emptyHeapIfExpressionList(&elseIfs), "creating an if-expression's empty else-if list");
+
+	IfExpression ifExpression = (IfExpression) {
 		.condition = condition,
 		.body = body,
 	};
+	TRY(appendToIfExpressionList(elseIfs, ifExpression), "appending to an if-expression list");
+
+	while (nextTokenIs(tokens, TOKEN_TYPE_KEYWORD_ELSE)) {
+		UNWRAP(popToken(tokens, TOKEN_TYPE_KEYWORD_ELSE, &next));
+
+		// Else-if block
+		if (nextTokenIs(tokens, TOKEN_TYPE_KEYWORD_IF)) {
+			UNWRAP(popToken(tokens, TOKEN_TYPE_KEYWORD_IF, &next));
+			TRY_LET(Expression elseIfCondition, parseExpression(tokens, &elseIfCondition), "parsing an else-if branch's condition");
+			TRY_LET(Block elseIfBody, parseBlock(tokens, &elseIfBody), "parsing the body of an else-if branch");
+			IfExpression elseIfExpression = (IfExpression) {
+				.condition = elseIfCondition,
+				.body = elseIfBody,
+			};
+			TRY(appendToIfExpressionList(elseIfs, elseIfExpression), "appending to an if-expression list");
+		}
+
+		// Else block
+		else {
+			TRY_LET(Block elseIfBody, parseBlock(tokens, &elseIfBody), "parsing the body of an else-if branch");
+			IfExpression elseIfExpression = (IfExpression) {
+				.condition = (Expression) {
+					.type = EXPRESSION_BOOLEAN,
+					.data = (ExpressionData) {
+						.boolean = true,
+					},
+				},
+				.body = elseIfBody,
+			};
+			TRY(appendToIfExpressionList(elseIfs, elseIfExpression), "appending to an if-expression list");
+		}
+	}
 
 	Expression loop = (Expression) {
 		.type = EXPRESSION_IF,
 		.data = (ExpressionData) {
-			.ifExpression = ifExpression,
+			.ifExpression = elseIfs,
 		},
 	};
 	RETURN_OK(output, loop);
@@ -742,9 +776,17 @@ static BinaryOperator COMPARISON = (BinaryOperator) {
 	},
 	.tokenTypeCount = 6,
 };
+static BinaryOperator COMBINATOR = (BinaryOperator) {
+	.precedent = &COMPARISON,
+	.tokenTypes = (TokenType[]) {
+		TOKEN_TYPE_KEYWORD_AND,
+		TOKEN_TYPE_KEYWORD_OR,
+	},
+	.tokenTypeCount = 2,
+};
 
 static BinaryOperator ASSIGNMENT = (BinaryOperator) {
-	.precedent = &COMPARISON,
+	.precedent = &COMBINATOR,
 	.tokenTypes = (TokenType[]) {
 		TOKEN_TYPE_EQUALS,
 	},
@@ -774,6 +816,12 @@ PRIVATE Result binaryOperationOf(String tokenValue, BinaryOperation* output) {
 	}
 	if (strcmp(tokenValue, "<=") == 0) {
 		RETURN_OK(output, BINARY_OPERATION_LESS_THAN_OR_EQUAL_TO);
+	}
+	if (strcmp(tokenValue, "and") == 0) {
+		RETURN_OK(output, BINARY_OPERATION_AND);
+	}
+	if (strcmp(tokenValue, "or") == 0) {
+		RETURN_OK(output, BINARY_OPERATION_OR);
 	}
 	if (strcmp(tokenValue, "==") == 0) {
 		RETURN_OK(output, BINARY_OPERATION_EQUAL);
@@ -1130,3 +1178,4 @@ IMPLEMENT_LIST(Field)
 IMPLEMENT_LIST(Internal)
 IMPLEMENT_LIST(ValueField)
 IMPLEMENT_LIST(Value)
+IMPLEMENT_LIST(IfExpression)
