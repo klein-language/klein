@@ -23,7 +23,7 @@ git clone https://github.com/klein-language/klein.git && cd klein && make instal
 
 #### Installation Customization
 
-All customizable flags can be found at the top of [the makefile](https://github.com/vi013t/klein/tree/main/Makefile).
+All customizable flags can be found at the top of [the makefile](https://github.com/klein-language/klein/tree/main/Makefile).
 
 The default compiler is `clang`, but any C compiler can be used by passing it to the `CC` variable, i.e.:
 
