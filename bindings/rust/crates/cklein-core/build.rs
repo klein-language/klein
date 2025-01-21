@@ -1,7 +1,6 @@
-use std::path::PathBuf;
-
 fn main() {
-    println!("cargo:rustc-link-search=./lib");
+    let dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+    println!("cargo:rustc-link-search={}", std::path::Path::new(&dir).join("lib").display());
     println!("cargo:rustc-link-lib=klein");
 
     let bindings = bindgen::Builder::default()
@@ -10,5 +9,5 @@ fn main() {
         .generate()
         .unwrap();
 
-    bindings.write_to_file(PathBuf::from("./src/internal.rs")).unwrap();
+    bindings.write_to_file(std::path::PathBuf::from("./src/internal.rs")).unwrap();
 }

@@ -7,4 +7,8 @@ mod lexer;
 mod parser;
 mod runner;
 
-pub use crate::{lexer::tokenize, runner::run};
+pub use crate::{
+    lexer::tokenize,
+    parser::parse,
+    runner::{run, RuntimeError},
+};

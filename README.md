@@ -51,4 +51,4 @@ To use Klein in a C project, copy the `klein.a` static library and the `klein.h`
 
 ### Rust
 
-Klein is available through the Rust crate [`cklein`](https://crates.io/crates/cklein).
+Klein is available through the Rust crate [`cklein`](https://crates.io/crates/cklein). See [the rust bindings](https://github.com/klein-language/klein/tree/main/bindings/rust) for more information.

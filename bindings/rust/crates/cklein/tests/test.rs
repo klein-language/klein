@@ -1,5 +1,5 @@
 #[test]
-pub fn fizzbuzz() {
+pub fn fizzbuzz() -> Result<(), cklein::RuntimeError> {
     cklein::run!(
         r#"
 		for number in 1.to(100) {

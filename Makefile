@@ -75,8 +75,8 @@ c-bindings: $(OBJS)
 	$(CC) -shared -fPIC -o ./bindings/c/libklein.so $(SRCS)
 
 rust-bindings: c-bindings
-	cp $(SHAREDLIB) bindings/rust/lib
-	cp $(HEADER) bindings/rust/lib
+	cp $(SHAREDLIB) bindings/rust/crates/cklein-core/lib
+	cp $(HEADER) bindings/rust/crates/cklein-core/lib
 	cd bindings/rust; cargo build; cargo test -- --nocapture
 
 bindings: rust-bindings
