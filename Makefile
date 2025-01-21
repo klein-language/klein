@@ -12,6 +12,7 @@ TARGET = $(BUILDDIR)/$(EXE)
 TESTFILE = ./tests/klein/test.kl
 STATICLIB = ./bindings/c/klein.a
 SHAREDLIB = ./bindings/c/libklein.so
+HEADER = ./bindings/c/klein.h
 
 SRCS = $(wildcard src/*.c)
 OBJS = $(SRCS:src/%.c=$(OBJDIR)/%.o)
@@ -74,6 +75,8 @@ c-bindings: $(OBJS)
 	$(CC) -shared -fPIC -o ./bindings/c/libklein.so $(SRCS)
 
 rust-bindings: c-bindings
+	cp $(SHAREDLIB) bindings/rust/lib
+	cp $(HEADER) bindings/rust/lib
 	cd bindings/rust; cargo build; cargo test -- --nocapture
 
 bindings: rust-bindings
