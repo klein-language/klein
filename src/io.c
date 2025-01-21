@@ -8,7 +8,7 @@ bool fileExists(String path) {
 	return fopen(path, "rb") != NULL;
 }
 
-Result readFile(String path, String* output) {
+KleinResult readFile(String path, String* output) {
 
 	// Open file
 	FILE* file = fopen(path, "rb");

@@ -20,25 +20,25 @@ typedef struct WhileLoop WhileLoop;
 typedef struct IfExpressionList IfExpressionList;
 typedef struct Function Function;
 
-#define DEFINE_KLEIN_LIST(type)                                 \
-	typedef struct type##List type##List;                       \
-	struct type##List {                                         \
-		unsigned long size;                                     \
-		unsigned long capacity;                                 \
-		type* data;                                             \
-	};                                                          \
-                                                                \
-	Result empty##type##List(type##List* output);               \
-	Result emptyHeap##type##List(type##List** output);          \
-	Result appendTo##type##List(type##List* list, type value);  \
-	Result prependTo##type##List(type##List* list, type value); \
-	int is##type##ListEmpty(type##List list);                   \
-	Result pop##type##List(type##List* list);                   \
+#define DEFINE_KLEIN_LIST(type)                                      \
+	typedef struct type##List type##List;                            \
+	struct type##List {                                              \
+		unsigned long size;                                          \
+		unsigned long capacity;                                      \
+		type* data;                                                  \
+	};                                                               \
+                                                                     \
+	KleinResult empty##type##List(type##List* output);               \
+	KleinResult emptyHeap##type##List(type##List** output);          \
+	KleinResult appendTo##type##List(type##List* list, type value);  \
+	KleinResult prependTo##type##List(type##List* list, type value); \
+	int is##type##ListEmpty(type##List list);                        \
+	KleinResult pop##type##List(type##List* list);                   \
 	type getFrom##type##ListUnchecked(type##List list, unsigned long index);
 
 typedef struct {
 	char* errorMessage;
-} Result;
+} KleinResult;
 
 typedef enum {
 
@@ -389,10 +389,12 @@ typedef struct {
  * If the source code contains unrecognized tokens, an error is returned.
  * If the given `sourceCode` or `output` is `NULL`, an error is returned.
  */
-Result tokenizeKlein(char* sourceCode, TokenList* output);
+KleinResult tokenizeKlein(char* sourceCode, TokenList* output);
 
-Result parseKlein(char* code, Program* output);
-Result parseKleinExpression(char* code, Expression* output);
+KleinResult parseKlein(char* code, Program* output);
+KleinResult parseKleinExpression(char* code, Expression* output);
+
+KleinResult runKlein(char* code);
 
 typedef enum {
 	INTERNAL_KEY_STRING,

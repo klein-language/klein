@@ -45,4 +45,8 @@ Note that when changing this option, the location passed will be automatically c
 
 ### C
 
-To use klein in a C project, 
+To use klein in a C project, copy the `klein.a` static library and the `klein.h` definitions in the [`bindings/c`](https://github.com/klein-language/klein/tree/main/bindings/c) directory into your project, and include `klein.a` when linking your object files. An example C project embedding klein can be found in [`tests/c`](https://github.com/klein-language/tree/main/tests/c).
+
+### Rust
+
+Klein is available through the Rust crate [`cklein`](https://crates.io/crates/cklein).

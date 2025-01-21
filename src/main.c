@@ -27,7 +27,7 @@
  * - `parse()` from `parser.h`
  * - `evaluate()` from `runner.h`
  */
-PRIVATE Result runFile(int numberOfArguments, String arguments[]) {
+PRIVATE KleinResult runFile(int numberOfArguments, String arguments[]) {
 	if (numberOfArguments < 2) {
 		return error("Not enough arguments to run");
 	}
@@ -103,7 +103,7 @@ PRIVATE Result runFile(int numberOfArguments, String arguments[]) {
  * More specifically, main wraps *this* function, and converts the `Result` into
  * an exit code. This handles the main logic of the program.
  */
-PRIVATE Result mainWrapper(int numberOfArguments, String arguments[]) {
+PRIVATE KleinResult mainWrapper(int numberOfArguments, String arguments[]) {
 	if (numberOfArguments < 2) {
 		printHelp(false);
 		return OK;
@@ -137,7 +137,7 @@ PRIVATE Result mainWrapper(int numberOfArguments, String arguments[]) {
  * code.
  */
 int main(int numberOfArguments, String arguments[]) {
-	Result attempt = mainWrapper(numberOfArguments, arguments);
+	KleinResult attempt = mainWrapper(numberOfArguments, arguments);
 	if (isError(attempt)) {
 		fprintf(stderr, "\n%s %s\n\n", STYLE("Error:", RED, BOLD), attempt.errorMessage);
 		return 1;

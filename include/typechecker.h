@@ -1,12 +1,8 @@
 #ifndef TYPECHECKER_H
 #define TYPECHECKER_H
 
-#include "list.h"
+#include "../bindings/c/klein.h"
 
-typedef struct Function Function;
-typedef struct TypeDeclaration TypeDeclaration;
-
-typedef struct Expression Expression;
-Result typeOf(Expression expression, Type* output);
+KleinResult typeOf(Expression expression, Type* output);
 
 #endif

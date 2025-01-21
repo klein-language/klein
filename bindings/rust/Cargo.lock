@@ -53,6 +53,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
+name = "cklein"
+version = "0.1.0"
+dependencies = [
+ "bindgen",
+ "strum",
+ "strum_macros",
+ "thiserror",
+]
+
+[[package]]
 name = "clang-sys"
 version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -88,16 +98,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
 dependencies = [
  "either",
-]
-
-[[package]]
-name = "klein"
-version = "0.1.0"
-dependencies = [
- "bindgen",
- "strum",
- "strum_macros",
- "thiserror",
 ]
 
 [[package]]

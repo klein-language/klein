@@ -9,19 +9,19 @@
 #include <stdlib.h>
 #include <string.h>
 
-PRIVATE Result parseLiteral(TokenList* tokens, Expression* output);
-PRIVATE Result parseStatement(TokenList* tokens, Statement* output);
-PRIVATE Result parseType(TokenList* tokens, Type* output);
-PRIVATE Result parseExpression(TokenList* tokens, Expression* output);
-PRIVATE Result parseBinaryOperation(TokenList* tokens, BinaryOperator operator, Expression * output);
-PRIVATE Result parsePrefixExpression(TokenList* tokens, Expression* output);
+PRIVATE KleinResult parseLiteral(TokenList* tokens, Expression* output);
+PRIVATE KleinResult parseStatement(TokenList* tokens, Statement* output);
+PRIVATE KleinResult parseType(TokenList* tokens, Type* output);
+PRIVATE KleinResult parseExpression(TokenList* tokens, Expression* output);
+PRIVATE KleinResult parseBinaryOperation(TokenList* tokens, BinaryOperator operator, Expression * output);
+PRIVATE KleinResult parsePrefixExpression(TokenList* tokens, Expression* output);
 
 bool hasInternal(Value value, InternalKey key) {
 	void* output;
 	return isOk(getValueInternal(value, key, &output));
 }
 
-Result getValueInternal(Value value, InternalKey key, void** output) {
+KleinResult getValueInternal(Value value, InternalKey key, void** output) {
 	FOR_EACH(Internal internal, value.internals) {
 		if (internal.key == key) {
 			RETURN_OK(output, internal.value);
@@ -32,7 +32,7 @@ Result getValueInternal(Value value, InternalKey key, void** output) {
 	RETURN_ERROR("Attempted to get an internal called \"%u\" on a value, but no internal with that name exists.", key);
 }
 
-Result getValueField(Value value, String name, Value** output) {
+KleinResult getValueField(Value value, String name, Value** output) {
 	FOR_EACH_REFP(ValueField * field, value.fields) {
 		if (strcmp(field->name, name) == 0) {
 			RETURN_OK(output, &field->value);
@@ -43,7 +43,7 @@ Result getValueField(Value value, String name, Value** output) {
 	RETURN_ERROR("Attempted to get a field called \"%s\" on an object, but no field with that name exists.", name);
 }
 
-PRIVATE Result popToken(TokenList* tokens, TokenType type, String* output) {
+PRIVATE KleinResult popToken(TokenList* tokens, TokenType type, String* output) {
 
 	// Empty token stream - error
 	if (tokens->size == 0) {
@@ -65,7 +65,7 @@ PRIVATE Result popToken(TokenList* tokens, TokenType type, String* output) {
 	RETURN_OK(output, token.value);
 }
 
-PRIVATE Result popAnyToken(TokenList* tokens, String* output) {
+PRIVATE KleinResult popAnyToken(TokenList* tokens, String* output) {
 	// Empty token stream - error
 	if (tokens->size == 0) {
 		RETURN_ERROR("Expected token but found end of input.");
@@ -83,7 +83,7 @@ PRIVATE Result popAnyToken(TokenList* tokens, String* output) {
 	RETURN_OK(output, token.value);
 }
 
-PRIVATE Result peekTokenType(TokenList* tokens, TokenType* output) {
+PRIVATE KleinResult peekTokenType(TokenList* tokens, TokenType* output) {
 	if (tokens->size == 0) {
 		RETURN_ERROR("Expected token but found end of input.");
 	}
@@ -113,7 +113,7 @@ PRIVATE bool nextTokenIsOneOf(TokenList* tokens, TokenType* options, size_t opti
 	return false;
 }
 
-PRIVATE Result parseTypeLiteral(TokenList* tokens, TypeLiteral* output) {
+PRIVATE KleinResult parseTypeLiteral(TokenList* tokens, TypeLiteral* output) {
 	TokenType nextTokenType;
 	TRY(peekTokenType(tokens, &nextTokenType), "peeking the next token type");
 	switch (nextTokenType) {
@@ -177,7 +177,7 @@ PRIVATE Result parseTypeLiteral(TokenList* tokens, TypeLiteral* output) {
 	}
 }
 
-PRIVATE Result parseType(TokenList* tokens, Type* output) {
+PRIVATE KleinResult parseType(TokenList* tokens, Type* output) {
 	TypeLiteral literal;
 	TRY(parseTypeLiteral(tokens, &literal), "parsing a type literal");
 	RETURN_OK(output, ((Type) {.type = TYPE_LITERAL, .data = (TypeData) {.literal = literal}}));
@@ -202,7 +202,7 @@ PRIVATE Result parseType(TokenList* tokens, Type* output) {
  * If an unexpected token was encountered (including the token stream running out of tokens
  * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
  */
-PRIVATE Result parseBlock(TokenList* tokens, Block* output) {
+PRIVATE KleinResult parseBlock(TokenList* tokens, Block* output) {
 	TRY(enterNewScope(), "entering a new scope");
 	TRY_LET(String next, popToken(tokens, TOKEN_TYPE_LEFT_BRACE, &next), "consuming the opening brace for a block");
 
@@ -251,7 +251,7 @@ PRIVATE Result parseBlock(TokenList* tokens, Block* output) {
  * If an unexpected token was encountered (including the token stream running out of tokens
  * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
  */
-PRIVATE Result parseObjectLiteral(TokenList* tokens, Expression* output) {
+PRIVATE KleinResult parseObjectLiteral(TokenList* tokens, Expression* output) {
 	TRY_LET(String next, popToken(tokens, TOKEN_TYPE_LEFT_BRACE, &next), "attempting to consume the opening brace on an object literal");
 
 	// Fields
@@ -302,7 +302,7 @@ PRIVATE Result parseObjectLiteral(TokenList* tokens, Expression* output) {
  * If an unexpected token was encountered (including the token stream running out of tokens
  * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
  */
-PRIVATE Result parseStringLiteral(TokenList* tokens, Expression* output) {
+PRIVATE KleinResult parseStringLiteral(TokenList* tokens, Expression* output) {
 	UNWRAP_LET(String value, popToken(tokens, TOKEN_TYPE_STRING, &value));
 	Expression expression = (Expression) {
 		.type = EXPRESSION_STRING,
@@ -332,7 +332,7 @@ PRIVATE Result parseStringLiteral(TokenList* tokens, Expression* output) {
  * If an unexpected token was encountered (including the token stream running out of tokens
  * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
  */
-PRIVATE Result parseIdentifierLiteral(TokenList* tokens, Expression* output) {
+PRIVATE KleinResult parseIdentifierLiteral(TokenList* tokens, Expression* output) {
 	UNWRAP_LET(String identifier, popToken(tokens, TOKEN_TYPE_IDENTIFIER, &identifier));
 	Expression expression = (Expression) {
 		.type = EXPRESSION_IDENTIFIER,
@@ -362,7 +362,7 @@ PRIVATE Result parseIdentifierLiteral(TokenList* tokens, Expression* output) {
  * If an unexpected token was encountered (including the token stream running out of tokens
  * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
  */
-PRIVATE Result parseListLiteral(TokenList* tokens, Expression* output) {
+PRIVATE KleinResult parseListLiteral(TokenList* tokens, Expression* output) {
 	UNWRAP_LET(String next, popToken(tokens, TOKEN_TYPE_LEFT_BRACKET, &next));
 
 	ExpressionList* elements;
@@ -405,7 +405,7 @@ PRIVATE Result parseListLiteral(TokenList* tokens, Expression* output) {
  * If an unexpected token was encountered (including the token stream running out of tokens
  * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
  */
-PRIVATE Result parseForLoop(TokenList* tokens, Expression* output) {
+PRIVATE KleinResult parseForLoop(TokenList* tokens, Expression* output) {
 	UNWRAP_LET(String next, popToken(tokens, TOKEN_TYPE_KEYWORD_FOR, &next));
 	TRY_LET(String binding, popToken(tokens, TOKEN_TYPE_IDENTIFIER, &binding), "parsing the binding in a for loop");
 	TRY(popToken(tokens, TOKEN_TYPE_KEYWORD_IN, &next), "consuming the keyword in in a for loop");
@@ -447,7 +447,7 @@ PRIVATE Result parseForLoop(TokenList* tokens, Expression* output) {
  * If an unexpected token was encountered (including the token stream running out of tokens
  * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
  */
-PRIVATE Result parseWhileLoop(TokenList* tokens, Expression* output) {
+PRIVATE KleinResult parseWhileLoop(TokenList* tokens, Expression* output) {
 	UNWRAP_LET(String next, popToken(tokens, TOKEN_TYPE_KEYWORD_WHILE, &next));
 	TRY_LET(Expression condition, parseExpression(tokens, &condition), "parsing the condition for a while loop");
 	TRY_LET(Block body, parseBlock(tokens, &body), "parsing the body of a while loop");
@@ -486,7 +486,7 @@ PRIVATE Result parseWhileLoop(TokenList* tokens, Expression* output) {
  * If an unexpected token was encountered (including the token stream running out of tokens
  * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
  */
-PRIVATE Result parseIfExpression(TokenList* tokens, Expression* output) {
+PRIVATE KleinResult parseIfExpression(TokenList* tokens, Expression* output) {
 	UNWRAP_LET(String next, popToken(tokens, TOKEN_TYPE_KEYWORD_IF, &next));
 	TRY_LET(Expression condition, parseExpression(tokens, &condition), "parsing the condition for an if expression");
 	TRY_LET(Block body, parseBlock(tokens, &body), "parsing the body of an if expression");
@@ -559,7 +559,7 @@ PRIVATE Result parseIfExpression(TokenList* tokens, Expression* output) {
  * If an unexpected token was encountered (including the token stream running out of tokens
  * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
  */
-PRIVATE Result parseNumberLiteral(TokenList* tokens, Expression* output) {
+PRIVATE KleinResult parseNumberLiteral(TokenList* tokens, Expression* output) {
 	UNWRAP_LET(String value, popToken(tokens, TOKEN_TYPE_NUMBER, &value));
 	Expression expression = (Expression) {
 		.type = EXPRESSION_NUMBER,
@@ -589,7 +589,7 @@ PRIVATE Result parseNumberLiteral(TokenList* tokens, Expression* output) {
  * If an unexpected token was encountered (including the token stream running out of tokens
  * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
  */
-PRIVATE Result parseDoBlock(TokenList* tokens, Expression* output) {
+PRIVATE KleinResult parseDoBlock(TokenList* tokens, Expression* output) {
 	UNWRAP_LET(String next, popToken(tokens, TOKEN_TYPE_KEYWORD_DO, &next));
 
 	Block block;
@@ -631,7 +631,7 @@ PRIVATE Result parseDoBlock(TokenList* tokens, Expression* output) {
  * If an unexpected token was encountered (including the token stream running out of tokens
  * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
  */
-PRIVATE Result parseFunctionLiteral(TokenList* tokens, Expression* output) {
+PRIVATE KleinResult parseFunctionLiteral(TokenList* tokens, Expression* output) {
 	UNWRAP_LET(String next, popToken(tokens, TOKEN_TYPE_KEYWORD_FUNCTION, &next));
 
 	// Parameters
@@ -702,14 +702,14 @@ PRIVATE Result parseFunctionLiteral(TokenList* tokens, Expression* output) {
  * If an unexpected token was encountered (including the token stream running out of tokens
  * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
  */
-PRIVATE Result parseParenthesizedExpression(TokenList* tokens, Expression* output) {
+PRIVATE KleinResult parseParenthesizedExpression(TokenList* tokens, Expression* output) {
 	TRY_LET(String next, popToken(tokens, TOKEN_TYPE_LEFT_PARENTHESIS, &next), "parsing the left parenthesis in a parenthesized expression");
 	TRY(parseExpression(tokens, output), "parsing the inside of a parenthesized expression");
 	TRY(popToken(tokens, TOKEN_TYPE_RIGHT_PARENTHESIS, &next), "parsing the closing parenthesis in a parenthesized expression");
 	return OK;
 }
 
-PRIVATE Result parseLiteral(TokenList* tokens, Expression* output) {
+PRIVATE KleinResult parseLiteral(TokenList* tokens, Expression* output) {
 	TRY_LET(TokenType nextTokenType, peekTokenType(tokens, &nextTokenType), "peeking the next token type");
 
 	switch (nextTokenType) {
@@ -793,7 +793,7 @@ static BinaryOperator ASSIGNMENT = (BinaryOperator) {
 	.tokenTypeCount = 1,
 };
 
-PRIVATE Result parsePrecedentBinaryOperation(TokenList* tokens, BinaryOperator operator, Expression * output) {
+PRIVATE KleinResult parsePrecedentBinaryOperation(TokenList* tokens, BinaryOperator operator, Expression * output) {
 	if (operator.precedent == NULL) {
 		return parsePrefixExpression(tokens, output);
 	}
@@ -801,7 +801,7 @@ PRIVATE Result parsePrecedentBinaryOperation(TokenList* tokens, BinaryOperator o
 	return parseBinaryOperation(tokens, *operator.precedent, output);
 }
 
-PRIVATE Result binaryOperationOf(String tokenValue, BinaryOperation* output) {
+PRIVATE KleinResult binaryOperationOf(String tokenValue, BinaryOperation* output) {
 	if (strcmp(tokenValue, ".") == 0) {
 		RETURN_OK(output, BINARY_OPERATION_DOT);
 	}
@@ -832,7 +832,7 @@ PRIVATE Result binaryOperationOf(String tokenValue, BinaryOperation* output) {
 	RETURN_ERROR("Unknown binary operation: %s", tokenValue);
 }
 
-PRIVATE Result parseFieldAccess(TokenList* tokens, Expression* output) {
+PRIVATE KleinResult parseFieldAccess(TokenList* tokens, Expression* output) {
 	TRY_LET(Expression left, parseLiteral(tokens, &left), "");
 
 	while (nextTokenIs(tokens, TOKEN_TYPE_DOT)) {
@@ -857,7 +857,7 @@ PRIVATE Result parseFieldAccess(TokenList* tokens, Expression* output) {
 	RETURN_OK(output, left);
 }
 
-PRIVATE Result parseBinaryOperation(TokenList* tokens, BinaryOperator operator, Expression * output) {
+PRIVATE KleinResult parseBinaryOperation(TokenList* tokens, BinaryOperator operator, Expression * output) {
 	TRY_LET(Expression left, parsePrecedentBinaryOperation(tokens, operator, & left), "");
 
 	while (nextTokenIsOneOf(tokens, operator.tokenTypes, operator.tokenTypeCount)) {
@@ -885,11 +885,11 @@ PRIVATE Result parseBinaryOperation(TokenList* tokens, BinaryOperator operator, 
 	RETURN_OK(output, left);
 }
 
-PRIVATE Result parseExpression(TokenList* tokens, Expression* output) {
+PRIVATE KleinResult parseExpression(TokenList* tokens, Expression* output) {
 	return parseBinaryOperation(tokens, ASSIGNMENT, output);
 }
 
-PRIVATE Result parsePostfixExpression(TokenList* tokens, Expression* output) {
+PRIVATE KleinResult parsePostfixExpression(TokenList* tokens, Expression* output) {
 	TRY_LET(Expression expression, parseFieldAccess(tokens, &expression), "");
 
 	while (nextTokenIsOneOf(tokens, (TokenType[]) {TOKEN_TYPE_LEFT_PARENTHESIS, TOKEN_TYPE_LEFT_BRACKET}, 2)) {
@@ -983,7 +983,7 @@ PRIVATE Result parsePostfixExpression(TokenList* tokens, Expression* output) {
  * If an unexpected token was encountered (including the token stream running out of tokens
  * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
  */
-PRIVATE Result parsePrefixExpression(TokenList* tokens, Expression* output) {
+PRIVATE KleinResult parsePrefixExpression(TokenList* tokens, Expression* output) {
 	if (nextTokenIs(tokens, TOKEN_TYPE_KEYWORD_NOT)) {
 		UNWRAP_LET(String next, popToken(tokens, TOKEN_TYPE_KEYWORD_NOT, &next));
 		TRY_LET(Expression inner, parsePrefixExpression(tokens, &inner), "parsing the inside of a unary not expression");
@@ -1028,7 +1028,7 @@ PRIVATE Result parsePrefixExpression(TokenList* tokens, Expression* output) {
  * If an unexpected token was encountered (including the token stream running out of tokens
  * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
  */
-PRIVATE Result parseDeclaration(TokenList* tokens, Statement* output) {
+PRIVATE KleinResult parseDeclaration(TokenList* tokens, Statement* output) {
 	// let
 	TRY_LET(String next, popToken(tokens, TOKEN_TYPE_KEYWORD_LET, &next), "parsing the keyword let in a declaration");
 
@@ -1084,7 +1084,7 @@ PRIVATE Result parseDeclaration(TokenList* tokens, Statement* output) {
  * If an unexpected token was encountered (including the token stream running out of tokens
  * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
  */
-PRIVATE Result parseReturnStatement(TokenList* tokens, Statement* output) {
+PRIVATE KleinResult parseReturnStatement(TokenList* tokens, Statement* output) {
 	TRY_LET(String next, popToken(tokens, TOKEN_TYPE_KEYWORD_RETURN, &next), "parsing the keyword return in a return statement");
 	Expression expression;
 	TRY(parseExpression(tokens, &expression), "parsing the expression in a return statement");
@@ -1117,7 +1117,7 @@ PRIVATE Result parseReturnStatement(TokenList* tokens, Statement* output) {
  * If an unexpected token was encountered (including the token stream running out of tokens
  * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
  */
-PRIVATE Result parseExpressionStatement(TokenList* tokens, Statement* output) {
+PRIVATE KleinResult parseExpressionStatement(TokenList* tokens, Statement* output) {
 	TRY_LET(Expression expression, parseExpression(tokens, &expression), "parsing a statement's expression");
 	Statement statement = (Statement) {
 		.type = STATEMENT_EXPRESSION,
@@ -1154,7 +1154,7 @@ PRIVATE Result parseExpressionStatement(TokenList* tokens, Statement* output) {
  * If an unexpected token was encountered (including the token stream running out of tokens
  * unexpectedly), an error is returned. If memory fails to allocate, an error is returned.
  */
-PRIVATE Result parseStatement(TokenList* tokens, Statement* output) {
+PRIVATE KleinResult parseStatement(TokenList* tokens, Statement* output) {
 	TRY_LET(TokenType nextTokenType, peekTokenType(tokens, &nextTokenType), "peeking the next token type");
 
 	switch (nextTokenType) {
@@ -1188,7 +1188,7 @@ PRIVATE Result parseStatement(TokenList* tokens, Statement* output) {
  * returned. If an unexpected token is encountered while parsing (i.e. the user entered
  * malformatted syntax), an error is returned.
  */
-PRIVATE Result parseTokens(TokenList* tokens, Program* output) {
+PRIVATE KleinResult parseTokens(TokenList* tokens, Program* output) {
 	StatementList statements;
 	TRY(emptyStatementList(&statements), "creating the programs statement list");
 	while (!isTokenListEmpty(*tokens)) {
@@ -1200,14 +1200,14 @@ PRIVATE Result parseTokens(TokenList* tokens, Program* output) {
 	RETURN_OK(output, (Program) {.statements = statements});
 }
 
-Result parseKlein(String code, Program* output) {
+KleinResult parseKlein(String code, Program* output) {
 	TokenList tokens;
 	TRY(tokenizeKlein(code, &tokens), "tokenizing the program's source code");
 	TRY_LET(Program program, parseTokens(&tokens, &program), "parsing the program");
 	RETURN_OK(output, program);
 }
 
-Result parseKleinExpression(String code, Expression* output) {
+KleinResult parseKleinExpression(String code, Expression* output) {
 	TokenList tokens;
 	TRY(tokenizeKlein(code, &tokens), "tokenizing the program's source code");
 	TRY_LET(Expression expression, parseExpression(&tokens, &expression), "parsing an expression");

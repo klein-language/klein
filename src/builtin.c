@@ -28,7 +28,7 @@
  * If the underlying `getline` call fails (for any reason), an error is returned.
  * If creating the string expression fails for any reason, an error is returned.
  */
-PRIVATE Result input(ValueList* arguments, Value* output) {
+PRIVATE KleinResult input(ValueList* arguments, Value* output) {
 	if (arguments->size > 1) {
 		RETURN_ERROR("Too many arguments passed to builtin function input(): Expected 0-1 but found %lu", arguments->size);
 	}
@@ -56,7 +56,7 @@ PRIVATE Result input(ValueList* arguments, Value* output) {
 	RETURN_OK(output, result);
 }
 
-PRIVATE Result stringLength(ValueList* arguments, Value* output) {
+PRIVATE KleinResult stringLength(ValueList* arguments, Value* output) {
 	if (arguments->size != 1) {
 		RETURN_ERROR("Incorrect number of arguments passed to builtin function String.length(): Expected 1 but found %lu", arguments->size);
 	}
@@ -69,7 +69,7 @@ PRIVATE Result stringLength(ValueList* arguments, Value* output) {
 	RETURN_OK(output, number);
 }
 
-PRIVATE Result listAppend(ValueList* arguments, Value* output) {
+PRIVATE KleinResult listAppend(ValueList* arguments, Value* output) {
 	SUPPRESS_UNUSED(output);
 
 	if (arguments->size != 2) {
@@ -83,7 +83,7 @@ PRIVATE Result listAppend(ValueList* arguments, Value* output) {
 	return OK;
 }
 
-Result valueToString(Value value, String* output) {
+KleinResult valueToString(Value value, String* output) {
 	if (isNumber(value)) {
 		UNWRAP_LET(double* number, getNumber(value, &number));
 
@@ -136,7 +136,7 @@ Result valueToString(Value value, String* output) {
 	RETURN_ERROR("unimplemented toString()");
 }
 
-Result valuesAreEqual(Value left, Value right, Value* output) {
+KleinResult valuesAreEqual(Value left, Value right, Value* output) {
 	if (isNumber(left) && isNumber(right)) {
 		UNWRAP_LET(double* leftNumber, getNumber(left, &leftNumber));
 		UNWRAP_LET(double* rightNumber, getNumber(right, &rightNumber));
@@ -147,7 +147,7 @@ Result valuesAreEqual(Value left, Value right, Value* output) {
 	UNREACHABLE;
 }
 
-PRIVATE Result numberMod(ValueList* arguments, Value* output) {
+PRIVATE KleinResult numberMod(ValueList* arguments, Value* output) {
 	if (arguments->size != 2) {
 		RETURN_ERROR("Incorrect number of arguments passed to builtin function Number.mod(): Expected 2 but found %lu", arguments->size);
 	}
@@ -182,7 +182,7 @@ PRIVATE Result numberMod(ValueList* arguments, Value* output) {
  * If the given argument isn't a string, an error is returned.
  * If the underlying `printf` call fails (for any reason), an error is returned.
  */
-PRIVATE Result print(ValueList* arguments, Value* output) {
+PRIVATE KleinResult print(ValueList* arguments, Value* output) {
 	SUPPRESS_UNUSED(output);
 
 	if (arguments->size < 1 || arguments->size > 2) {
@@ -222,7 +222,7 @@ PRIVATE Result print(ValueList* arguments, Value* output) {
 	return OK;
 }
 
-Result getBuiltin(String name, BuiltinFunction* output) {
+KleinResult getBuiltin(String name, BuiltinFunction* output) {
 	if (strcmp(name, "print") == 0) {
 		RETURN_OK(output, &print);
 	}
@@ -246,7 +246,7 @@ Result getBuiltin(String name, BuiltinFunction* output) {
 	RETURN_ERROR("Attempted to get a built-in function called \"%s\", but no built-in with that name exists.", name);
 }
 
-Result builtinFunctionToValue(BuiltinFunction function, Value* output) {
+KleinResult builtinFunctionToValue(BuiltinFunction function, Value* output) {
 	InternalList internals;
 	TRY(emptyInternalList(&internals), "creating an builtin's internals list");
 	TRY(appendToInternalList(&internals, (Internal) {.key = INTERNAL_KEY_BUILTIN_FUNCTION, .value = (void*) function}), "appending to a builtin function value's internals");

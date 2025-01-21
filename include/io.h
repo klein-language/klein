@@ -4,7 +4,7 @@
 #include "result.h"
 
 bool fileExists(String path);
-Result readFile(String path, String* output);
+KleinResult readFile(String path, String* output);
 String input(void);
 void printHelp(bool detailed);
 

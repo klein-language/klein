@@ -7,15 +7,15 @@
 #include <stdio.h>
 #include <string.h>
 
-bool isOk(Result result);
-bool isError(Result result);
-Result error(String message);
+bool isOk(KleinResult result);
+bool isError(KleinResult result);
+KleinResult error(String message);
 
-extern Result OK;
+extern KleinResult OK;
 
 #define TRY(expression__, ...)                                                                                          \
 	do {                                                                                                                \
-		Result attempt__ = expression__;                                                                                \
+		KleinResult attempt__ = expression__;                                                                           \
 		if (attempt__.errorMessage != NULL) {                                                                           \
 			String errorMessage__;                                                                                      \
 			FORMAT(errorMessage__, __VA_ARGS__);                                                                        \
@@ -36,7 +36,7 @@ extern Result OK;
 
 #define UNWRAP(expression__)                                                \
 	do {                                                                    \
-		Result attempt__ = expression__;                                    \
+		KleinResult attempt__ = expression__;                               \
 		if (attempt__.errorMessage != NULL) {                               \
 			fprintf(stderr, "Error: Attempted to unwrap an error value\n"); \
 			exit(1);                                                        \

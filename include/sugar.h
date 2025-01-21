@@ -4,27 +4,27 @@
 #include "parser.h"
 #include "result.h"
 
-Result stringValue(String value, Value* output);
-Result getString(Value value, String** output);
+KleinResult stringValue(String value, Value* output);
+KleinResult getString(Value value, String** output);
 bool isString(Value value);
 
-Result numberValue(double value, Value* output);
-Result getNumber(Value value, double** output);
+KleinResult numberValue(double value, Value* output);
+KleinResult getNumber(Value value, double** output);
 bool isNumber(Value value);
 
-Result listValue(ValueList values, Value* output);
-Result getList(Value value, ValueList** output);
+KleinResult listValue(ValueList values, Value* output);
+KleinResult getList(Value value, ValueList** output);
 bool isList(Value value);
 
-Result booleanValue(bool value, Value* output);
-Result getBoolean(Value value, bool** output);
+KleinResult booleanValue(bool value, Value* output);
+KleinResult getBoolean(Value value, bool** output);
 bool isBoolean(Value vaue);
 
-Result functionValue(Function value, Value* output);
-Result getFunction(Value value, Function** output);
+KleinResult functionValue(Function value, Value* output);
+KleinResult getFunction(Value value, Function** output);
 bool isBuiltinFunction(Value value);
 
-Result nullValue(Value* output);
+KleinResult nullValue(Value* output);
 bool isNull(Value value);
 
 #endif

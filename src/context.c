@@ -1,5 +1,4 @@
 #include "../include/context.h"
-#include "../include/parser.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -26,7 +25,7 @@
  * scopes), an error is returned. If the given `scope` or `name` is `NULL`,
  * an error is returned.
  */
-Result declareNewVariable(Scope* scope, ScopeDeclaration declaration) {
+KleinResult declareNewVariable(Scope* scope, ScopeDeclaration declaration) {
 	// Error - null scope
 	if (scope == NULL) {
 		RETURN_ERROR("Attempted to declare a variable to a NULL scope.");
@@ -45,7 +44,7 @@ Result declareNewVariable(Scope* scope, ScopeDeclaration declaration) {
 	return OK;
 }
 
-Result reassignVariable(Scope* scope, ScopeDeclaration declaration) {
+KleinResult reassignVariable(Scope* scope, ScopeDeclaration declaration) {
 	// Error - null scope
 	if (scope == NULL) {
 		RETURN_ERROR("Attempted to reassign a variable in a NULL scope");
@@ -64,7 +63,7 @@ Result reassignVariable(Scope* scope, ScopeDeclaration declaration) {
 	return OK;
 }
 
-Result setVariable(Scope* scope, ScopeDeclaration declaration) {
+KleinResult setVariable(Scope* scope, ScopeDeclaration declaration) {
 	// Error - null scope
 	if (scope == NULL) {
 		RETURN_ERROR("Attempted to set a variable in a NULL scope");
@@ -108,7 +107,7 @@ Result setVariable(Scope* scope, ScopeDeclaration declaration) {
  * If no variable exists with the given name in the given scope,
  * an error is returned.
  */
-Result getVariable(Scope scope, String name, Value** output) {
+KleinResult getVariable(Scope scope, String name, Value** output) {
 	Scope* current = &scope;
 	while (current != NULL) {
 		FOR_EACH_REF(ScopeDeclaration * variable, current->variables) {
@@ -123,7 +122,7 @@ Result getVariable(Scope scope, String name, Value** output) {
 	RETURN_ERROR("Attempted to reference a variable called \"%s\", but no variable with that name exists where it was referenced.", name);
 }
 
-Result enterNewScope(void) {
+KleinResult enterNewScope(void) {
 	ScopeList children;
 	TRY(emptyScopeList(&children), "creating the child scope list for a scope");
 
@@ -142,7 +141,7 @@ Result enterNewScope(void) {
 	return OK;
 }
 
-Result exitScope(void) {
+KleinResult exitScope(void) {
 	if (CONTEXT->scope->parent == NULL) {
 		RETURN_ERROR("Attempted to exit the global scope.");
 	}
@@ -165,7 +164,7 @@ Result exitScope(void) {
  *
  * If memory fails to allocate, an error is returned.
  */
-Result newContext(Context* output) {
+KleinResult newContext(Context* output) {
 	ScopeList children;
 	TRY(emptyScopeList(&children), "creating the context's scope list");
 

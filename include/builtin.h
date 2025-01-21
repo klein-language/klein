@@ -5,11 +5,11 @@
 #include "result.h"
 #include "util.h"
 
-typedef Result (*BuiltinFunction)(ValueList*, Value*);
+typedef KleinResult (*BuiltinFunction)(ValueList*, Value*);
 
-Result getBuiltin(String name, BuiltinFunction* output);
-Result builtinFunctionToValue(BuiltinFunction function, Value* output);
-Result valuesAreEqual(Value left, Value right, Value* output);
-Result valueToString(Value left, String* output);
+KleinResult getBuiltin(String name, BuiltinFunction* output);
+KleinResult builtinFunctionToValue(BuiltinFunction function, Value* output);
+KleinResult valuesAreEqual(Value left, Value right, Value* output);
+KleinResult valueToString(Value left, String* output);
 
 #endif

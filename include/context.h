@@ -41,7 +41,7 @@ struct Context {
  *
  * If memory fails to allocate, an error is returned.
  */
-Result newContext(Context* output);
+KleinResult newContext(Context* output);
 
 /**
  * Declares a new variable in the given scope with the given name and
@@ -66,7 +66,7 @@ Result newContext(Context* output);
  * scopes), an error is returned. If the given `scope` or `name` is `NULL`,
  * an error is returned.
  */
-Result declareNewVariable(Scope* scope, ScopeDeclaration declaration);
+KleinResult declareNewVariable(Scope* scope, ScopeDeclaration declaration);
 
 /**
  * Returns a pointer to the `Expression` value stored in the variable with the
@@ -91,12 +91,12 @@ Result declareNewVariable(Scope* scope, ScopeDeclaration declaration);
  * If no variable exists with the given name in the given scope,
  * an error is returned.
  */
-Result getVariable(Scope scope, char* name, Value** output);
-Result setVariable(Scope* scope, ScopeDeclaration declaration);
-Result reassignVariable(Scope* scope, ScopeDeclaration declaration);
+KleinResult getVariable(Scope scope, char* name, Value** output);
+KleinResult setVariable(Scope* scope, ScopeDeclaration declaration);
+KleinResult reassignVariable(Scope* scope, ScopeDeclaration declaration);
 
-Result enterNewScope(void);
-Result exitScope(void);
+KleinResult enterNewScope(void);
+KleinResult exitScope(void);
 
 void freeContext(Context context);
 

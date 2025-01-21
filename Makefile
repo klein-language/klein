@@ -10,6 +10,8 @@ VALGRINDDIR = $(CACHEDIR)/valgrind
 BUILDDIR = ./build
 TARGET = $(BUILDDIR)/$(EXE)
 TESTFILE = ./tests/klein/test.kl
+STATICLIB = ./bindings/c/klein.a
+SHAREDLIB = ./bindings/c/libklein.so
 
 SRCS = $(wildcard src/*.c)
 OBJS = $(SRCS:src/%.c=$(OBJDIR)/%.o)
@@ -54,6 +56,8 @@ clean:
 	mkdir $(OBJDIR)
 	rm $(BUILDDIR) -rf
 	mkdir $(BUILDDIR)
+	rm $(STATICLIB)
+	rm $(SHAREDLIB)
 
 # Run on the test file
 test: build
@@ -74,4 +78,4 @@ rust-bindings: c-bindings
 
 bindings: rust-bindings
 
-.PHONY: all clean check build test install package
+.PHONY: all clean check build test install bindings c-bindings rust-bindings

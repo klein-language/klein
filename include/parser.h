@@ -5,7 +5,7 @@
 #include "util.h"
 
 bool hasInternal(Value value, InternalKey key);
-Result getValueInternal(Value value, InternalKey key, void** output);
-Result getValueField(Value value, String name, Value** output);
+KleinResult getValueInternal(Value value, InternalKey key, void** output);
+KleinResult getValueField(Value value, String name, Value** output);
 
 #endif

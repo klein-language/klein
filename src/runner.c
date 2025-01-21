@@ -8,10 +8,10 @@
 static bool isReturning = false;
 static Value returnValue;
 
-PRIVATE Result evaluateStatement(Statement statement);
-Result evaluateExpression(Expression expression, Value* output);
+PRIVATE KleinResult evaluateStatement(Statement statement);
+KleinResult evaluateExpression(Expression expression, Value* output);
 
-PRIVATE Result evaluateObject(Object object, Value* output) {
+PRIVATE KleinResult evaluateObject(Object object, Value* output) {
 	TRY_LET(ValueFieldList * list, emptyHeapValueFieldList(&list), "creating the field list for an object's value");
 	FOR_EACH(Field field, object.fields) {
 		TRY_LET(Value value, evaluateExpression(field.value, &value), "evaluating the value of the field \"%s\" on an object", field.name);
@@ -30,7 +30,7 @@ PRIVATE Result evaluateObject(Object object, Value* output) {
 	RETURN_OK(output, result);
 }
 
-PRIVATE Result evaluateBlock(Block block, Value* output) {
+PRIVATE KleinResult evaluateBlock(Block block, Value* output) {
 	Scope* previousScope = CONTEXT->scope;
 	CONTEXT->scope = block.innerScope;
 
@@ -44,7 +44,7 @@ PRIVATE Result evaluateBlock(Block block, Value* output) {
 	return nullValue(output);
 }
 
-PRIVATE Result evaluateList(ExpressionList list, Value* output) {
+PRIVATE KleinResult evaluateList(ExpressionList list, Value* output) {
 	ValueList elements;
 	TRY(emptyValueList(&elements), "creating a list literal's element list");
 	FOR_EACH(Expression element, list) {
@@ -56,7 +56,7 @@ PRIVATE Result evaluateList(ExpressionList list, Value* output) {
 	return listValue(elements, output);
 }
 
-PRIVATE Result evaluateForLoop(ForLoop forLoop, Value* output) {
+PRIVATE KleinResult evaluateForLoop(ForLoop forLoop, Value* output) {
 	TRY_LET(Value list, evaluateExpression(forLoop.list, &list), "evaluating the list to iterate on in a forloop");
 	TRY_LET(String iterable, valueToString(list, &iterable), "");
 	TRY_LET(ValueList * elements, getList(list, &elements), "getting the elements of the list to iterate on in a for loop");
@@ -74,7 +74,7 @@ PRIVATE Result evaluateForLoop(ForLoop forLoop, Value* output) {
 	return nullValue(output);
 }
 
-PRIVATE Result evaluateWhileLoop(WhileLoop whileLoop, Value* output) {
+PRIVATE KleinResult evaluateWhileLoop(WhileLoop whileLoop, Value* output) {
 	while (true) {
 		TRY_LET(Value condition, evaluateExpression(whileLoop.condition, &condition), "evaluating the condition of a while loop");
 		TRY_LET(bool* conditionValue, getBoolean(condition, &conditionValue), "getting the boolean value of a while loop's condition");
@@ -89,7 +89,7 @@ PRIVATE Result evaluateWhileLoop(WhileLoop whileLoop, Value* output) {
 	return nullValue(output);
 }
 
-PRIVATE Result evaluateIfExpression(IfExpressionList ifExpressions, Value* output) {
+PRIVATE KleinResult evaluateIfExpression(IfExpressionList ifExpressions, Value* output) {
 	FOR_EACH(IfExpression ifExpression, ifExpressions) {
 		TRY_LET(Value condition, evaluateExpression(ifExpression.condition, &condition), "evaluating the condition of an if-expression");
 		TRY_LET(bool* conditionValue, getBoolean(condition, &conditionValue), "getting the boolean value of an if-expression's condition");
@@ -104,7 +104,7 @@ PRIVATE Result evaluateIfExpression(IfExpressionList ifExpressions, Value* outpu
 	return nullValue(output);
 }
 
-PRIVATE Result evaluateBinaryExpression(BinaryExpression binary, Value* output) {
+PRIVATE KleinResult evaluateBinaryExpression(BinaryExpression binary, Value* output) {
 	switch (binary.operation) {
 		case BINARY_OPERATION_DOT: {
 			TRY_LET(Value left, evaluateExpression(binary.left, &left), "evaluating the left-hand side of a field access");
@@ -206,11 +206,11 @@ PRIVATE Result evaluateBinaryExpression(BinaryExpression binary, Value* output) 
 	}
 }
 
-PRIVATE Result evaluateFunction(Function expression, Value* output) {
+PRIVATE KleinResult evaluateFunction(Function expression, Value* output) {
 	return functionValue(expression, output);
 }
 
-PRIVATE Result evaluateUnaryExpression(UnaryExpression unaryExpression, Value* output) {
+PRIVATE KleinResult evaluateUnaryExpression(UnaryExpression unaryExpression, Value* output) {
 	switch (unaryExpression.operation.type) {
 		case UNARY_OPERATION_FUNCTION_CALL: {
 			// Builtin
@@ -288,7 +288,7 @@ PRIVATE Result evaluateUnaryExpression(UnaryExpression unaryExpression, Value* o
 	}
 }
 
-Result evaluateExpression(Expression expression, Value* output) {
+KleinResult evaluateExpression(Expression expression, Value* output) {
 	switch (expression.type) {
 		case EXPRESSION_OBJECT: {
 			return evaluateObject(*expression.data.object, output);
@@ -336,7 +336,7 @@ Result evaluateExpression(Expression expression, Value* output) {
 	}
 }
 
-PRIVATE Result evaluateStatement(Statement statement) {
+PRIVATE KleinResult evaluateStatement(Statement statement) {
 	if (isReturning) {
 		return OK;
 	}
@@ -363,7 +363,7 @@ PRIVATE Result evaluateStatement(Statement statement) {
 	}
 }
 
-Result run(Program program) {
+KleinResult run(Program program) {
 	FOR_EACH(Statement statement, program.statements) {
 		TRY(evaluateStatement(statement), "evaluating a top-level statement");
 	}

@@ -3,18 +3,18 @@
 #include <stdbool.h>
 #include <string.h>
 
-Result OK = (Result) {.errorMessage = NULL};
+KleinResult OK = (KleinResult) {.errorMessage = NULL};
 
-bool isOk(Result result) {
+bool isOk(KleinResult result) {
 	return result.errorMessage == NULL;
 }
 
-bool isError(Result result) {
+bool isError(KleinResult result) {
 	return result.errorMessage != NULL;
 }
 
-Result error(String message) {
-	return (Result) {
+KleinResult error(String message) {
+	return (KleinResult) {
 		.errorMessage = strdup(message),
 	};
 }

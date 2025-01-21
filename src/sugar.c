@@ -2,9 +2,9 @@
 #include "../include/builtin.h"
 #include "../include/parser.h"
 
-Result evaluateExpression(Expression expression, Value* output);
+KleinResult evaluateExpression(Expression expression, Value* output);
 
-Result stringValue(String string, Value* output) {
+KleinResult stringValue(String string, Value* output) {
 
 	// Internals
 	InternalList internals;
@@ -32,7 +32,7 @@ Result stringValue(String string, Value* output) {
 	RETURN_OK(output, value);
 }
 
-Result getString(Value value, String** output) {
+KleinResult getString(Value value, String** output) {
 	return getValueInternal(value, INTERNAL_KEY_STRING, (void**) output);
 }
 
@@ -41,7 +41,7 @@ bool isString(Value value) {
 	return isOk(getString(value, &output));
 }
 
-Result numberValue(double number, Value* output) {
+KleinResult numberValue(double number, Value* output) {
 
 	// Internals
 	InternalList internals;
@@ -83,7 +83,7 @@ Result numberValue(double number, Value* output) {
 	RETURN_OK(output, value);
 }
 
-Result getNumber(Value value, double** output) {
+KleinResult getNumber(Value value, double** output) {
 	return getValueInternal(value, INTERNAL_KEY_NUMBER, (void**) output);
 }
 
@@ -92,7 +92,7 @@ bool isNumber(Value value) {
 	return isOk(getNumber(value, &output));
 }
 
-Result booleanValue(bool boolean, Value* output) {
+KleinResult booleanValue(bool boolean, Value* output) {
 
 	// Internals
 	InternalList internals;
@@ -113,7 +113,7 @@ Result booleanValue(bool boolean, Value* output) {
 	RETURN_OK(output, value);
 }
 
-Result getBoolean(Value value, bool** output) {
+KleinResult getBoolean(Value value, bool** output) {
 	return getValueInternal(value, INTERNAL_KEY_BOOLEAN, (void**) output);
 }
 
@@ -122,7 +122,7 @@ bool isBoolean(Value value) {
 	return isOk(getBoolean(value, &output));
 }
 
-Result listValue(ValueList values, Value* output) {
+KleinResult listValue(ValueList values, Value* output) {
 
 	// Internals
 	InternalList internals;
@@ -149,7 +149,7 @@ Result listValue(ValueList values, Value* output) {
 	RETURN_OK(output, value);
 }
 
-Result getList(Value value, ValueList** output) {
+KleinResult getList(Value value, ValueList** output) {
 	return getValueInternal(value, INTERNAL_KEY_LIST, (void**) output);
 }
 
@@ -158,7 +158,7 @@ bool isList(Value value) {
 	return isOk(getList(value, &output));
 }
 
-Result nullValue(Value* output) {
+KleinResult nullValue(Value* output) {
 	// Fields
 	ValueFieldList* fields;
 	TRY(emptyHeapValueFieldList(&fields), "creating the field list for a null value");
@@ -171,7 +171,7 @@ Result nullValue(Value* output) {
 	RETURN_OK(output, result);
 }
 
-Result functionValue(Function value, Value* output) {
+KleinResult functionValue(Function value, Value* output) {
 	// Fields
 	ValueFieldList* fields;
 	TRY(emptyHeapValueFieldList(&fields), "creating the field list for a function value");
@@ -187,7 +187,7 @@ Result functionValue(Function value, Value* output) {
 	RETURN_OK(output, result);
 }
 
-Result getFunction(Value value, Function** output) {
+KleinResult getFunction(Value value, Function** output) {
 	return getValueInternal(value, INTERNAL_KEY_FUNCTION, (void**) output);
 }
 

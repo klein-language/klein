@@ -28,7 +28,7 @@
  *
  * If the given string value is null, an error is returned.
  */
-PRIVATE Result createToken(TokenType type, String value, Token* output) {
+PRIVATE KleinResult createToken(TokenType type, String value, Token* output) {
 	ASSERT_NONNULL(value);
 	ASSERT_NONNULL(output);
 	Token token = (Token) {
@@ -64,7 +64,7 @@ PRIVATE Result createToken(TokenType type, String value, Token* output) {
  * If the given source code doesn't start with a valid Klein token, an error is
  * returned.
  */
-PRIVATE Result getNextToken(String sourceCode, Token* output) {
+PRIVATE KleinResult getNextToken(String sourceCode, Token* output) {
 	ASSERT_NONNULL(sourceCode);
 
 	char* current = sourceCode;
@@ -201,7 +201,7 @@ PRIVATE Result getNextToken(String sourceCode, Token* output) {
 	// Unrecognized
 	return error("Unrecognized token");
 }
-Result tokenizeKlein(String sourceCode, TokenList* output) {
+KleinResult tokenizeKlein(String sourceCode, TokenList* output) {
 	ASSERT_NONNULL(sourceCode);
 	ASSERT_NONNULL(output);
 
