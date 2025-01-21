@@ -9,7 +9,7 @@ static bool isReturning = false;
 static Value returnValue;
 
 PRIVATE Result evaluateStatement(Statement statement);
-PRIVATE Result evaluateExpression(Expression expression, Value* output);
+Result evaluateExpression(Expression expression, Value* output);
 
 PRIVATE Result evaluateObject(Object object, Value* output) {
 	TRY_LET(ValueFieldList * list, emptyHeapValueFieldList(&list), "creating the field list for an object's value");
@@ -107,101 +107,101 @@ PRIVATE Result evaluateIfExpression(IfExpressionList ifExpressions, Value* outpu
 PRIVATE Result evaluateBinaryExpression(BinaryExpression binary, Value* output) {
 	switch (binary.operation) {
 		case BINARY_OPERATION_DOT: {
-			TRY_LET(Value left, evaluateExpression(*binary.left, &left), "evaluating the left-hand side of a field access");
-			TRY_LET(Value * value, getValueField(left, binary.right->data.identifier, &value), "getting the field \"%s\" on an object", binary.right->data.identifier);
+			TRY_LET(Value left, evaluateExpression(binary.left, &left), "evaluating the left-hand side of a field access");
+			TRY_LET(Value * value, getValueField(left, binary.right.data.identifier, &value), "getting the field \"%s\" on an object", binary.right.data.identifier);
 			Value* this = malloc(sizeof(Value));
 			*this = left;
 			TRY(appendToInternalList(&value->internals, (Internal) {.key = INTERNAL_KEY_THIS_OBJECT, .value = this}), "setting the this-object for a field");
 			RETURN_OK(output, *value);
 		}
 		case BINARY_OPERATION_LESS_THAN_OR_EQUAL_TO: {
-			TRY_LET(Value left, evaluateExpression(*binary.left, &left), "evaluating the left-hand side of a binary expression");
-			TRY_LET(Value right, evaluateExpression(*binary.right, &right), "evaluating the right-hand side of a binary expression");
+			TRY_LET(Value left, evaluateExpression(binary.left, &left), "evaluating the left-hand side of a binary expression");
+			TRY_LET(Value right, evaluateExpression(binary.right, &right), "evaluating the right-hand side of a binary expression");
 			TRY_LET(double* leftNumber, getNumber(left, &leftNumber), "getting the left-hand side of a <= expression as a number");
 			TRY_LET(double* rightNumber, getNumber(right, &rightNumber), "getting the right-hand side of a <= expression as a number");
 			return booleanValue(*leftNumber <= *rightNumber, output);
 		}
 		case BINARY_OPERATION_LESS_THAN: {
-			TRY_LET(Value left, evaluateExpression(*binary.left, &left), "evaluating the left-hand side of a binary expression");
-			TRY_LET(Value right, evaluateExpression(*binary.right, &right), "evaluating the right-hand side of a binary expression");
+			TRY_LET(Value left, evaluateExpression(binary.left, &left), "evaluating the left-hand side of a binary expression");
+			TRY_LET(Value right, evaluateExpression(binary.right, &right), "evaluating the right-hand side of a binary expression");
 			TRY_LET(double* leftNumber, getNumber(left, &leftNumber), "getting the left-hand side of a <= expression as a number");
 			TRY_LET(double* rightNumber, getNumber(right, &rightNumber), "getting the right-hand side of a <= expression as a number");
 			return booleanValue(*leftNumber < *rightNumber, output);
 		}
 		case BINARY_OPERATION_GREATER_THAN: {
-			TRY_LET(Value left, evaluateExpression(*binary.left, &left), "evaluating the left-hand side of a binary expression");
-			TRY_LET(Value right, evaluateExpression(*binary.right, &right), "evaluating the right-hand side of a binary expression");
+			TRY_LET(Value left, evaluateExpression(binary.left, &left), "evaluating the left-hand side of a binary expression");
+			TRY_LET(Value right, evaluateExpression(binary.right, &right), "evaluating the right-hand side of a binary expression");
 			TRY_LET(double* leftNumber, getNumber(left, &leftNumber), "getting the left-hand side of a <= expression as a number");
 			TRY_LET(double* rightNumber, getNumber(right, &rightNumber), "getting the right-hand side of a <= expression as a number");
 			return booleanValue(*leftNumber > *rightNumber, output);
 		}
 		case BINARY_OPERATION_GREATER_THAN_OR_EQUAL_TO: {
-			TRY_LET(Value left, evaluateExpression(*binary.left, &left), "evaluating the left-hand side of a binary expression");
-			TRY_LET(Value right, evaluateExpression(*binary.right, &right), "evaluating the right-hand side of a binary expression");
+			TRY_LET(Value left, evaluateExpression(binary.left, &left), "evaluating the left-hand side of a binary expression");
+			TRY_LET(Value right, evaluateExpression(binary.right, &right), "evaluating the right-hand side of a binary expression");
 			TRY_LET(double* leftNumber, getNumber(left, &leftNumber), "getting the left-hand side of a <= expression as a number");
 			TRY_LET(double* rightNumber, getNumber(right, &rightNumber), "getting the right-hand side of a <= expression as a number");
 			return booleanValue(*leftNumber >= *rightNumber, output);
 		}
 		case BINARY_OPERATION_PLUS: {
-			TRY_LET(Value left, evaluateExpression(*binary.left, &left), "evaluating the left-hand side of a binary expression");
-			TRY_LET(Value right, evaluateExpression(*binary.right, &right), "evaluating the right-hand side of a binary expression");
+			TRY_LET(Value left, evaluateExpression(binary.left, &left), "evaluating the left-hand side of a binary expression");
+			TRY_LET(Value right, evaluateExpression(binary.right, &right), "evaluating the right-hand side of a binary expression");
 			TRY_LET(double* leftNumber, getNumber(left, &leftNumber), "getting the left-hand side of a + expression as a number");
 			TRY_LET(double* rightNumber, getNumber(right, &rightNumber), "getting the right-hand side of a + expression as a number");
 			return numberValue(*leftNumber + *rightNumber, output);
 		}
 		case BINARY_OPERATION_TIMES: {
-			TRY_LET(Value left, evaluateExpression(*binary.left, &left), "evaluating the left-hand side of a binary expression");
-			TRY_LET(Value right, evaluateExpression(*binary.right, &right), "evaluating the right-hand side of a binary expression");
+			TRY_LET(Value left, evaluateExpression(binary.left, &left), "evaluating the left-hand side of a binary expression");
+			TRY_LET(Value right, evaluateExpression(binary.right, &right), "evaluating the right-hand side of a binary expression");
 			TRY_LET(double* leftNumber, getNumber(left, &leftNumber), "getting the left-hand side of a + expression as a number");
 			TRY_LET(double* rightNumber, getNumber(right, &rightNumber), "getting the right-hand side of a + expression as a number");
 			return numberValue(*leftNumber * *rightNumber, output);
 		}
 		case BINARY_OPERATION_MINUS: {
-			TRY_LET(Value left, evaluateExpression(*binary.left, &left), "evaluating the left-hand side of a binary expression");
-			TRY_LET(Value right, evaluateExpression(*binary.right, &right), "evaluating the right-hand side of a binary expression");
+			TRY_LET(Value left, evaluateExpression(binary.left, &left), "evaluating the left-hand side of a binary expression");
+			TRY_LET(Value right, evaluateExpression(binary.right, &right), "evaluating the right-hand side of a binary expression");
 			TRY_LET(double* leftNumber, getNumber(left, &leftNumber), "getting the left-hand side of a + expression as a number");
 			TRY_LET(double* rightNumber, getNumber(right, &rightNumber), "getting the right-hand side of a + expression as a number");
 			return numberValue(*leftNumber - *rightNumber, output);
 		}
 		case BINARY_OPERATION_DIVIDE: {
-			TRY_LET(Value left, evaluateExpression(*binary.left, &left), "evaluating the left-hand side of a binary expression");
-			TRY_LET(Value right, evaluateExpression(*binary.right, &right), "evaluating the right-hand side of a binary expression");
+			TRY_LET(Value left, evaluateExpression(binary.left, &left), "evaluating the left-hand side of a binary expression");
+			TRY_LET(Value right, evaluateExpression(binary.right, &right), "evaluating the right-hand side of a binary expression");
 			TRY_LET(double* leftNumber, getNumber(left, &leftNumber), "getting the left-hand side of a + expression as a number");
 			TRY_LET(double* rightNumber, getNumber(right, &rightNumber), "getting the right-hand side of a + expression as a number");
 			return numberValue(*leftNumber / *rightNumber, output);
 		}
 		case BINARY_OPERATION_POWER: {
-			TRY_LET(Value left, evaluateExpression(*binary.left, &left), "evaluating the left-hand side of a binary expression");
-			TRY_LET(Value right, evaluateExpression(*binary.right, &right), "evaluating the right-hand side of a binary expression");
+			TRY_LET(Value left, evaluateExpression(binary.left, &left), "evaluating the left-hand side of a binary expression");
+			TRY_LET(Value right, evaluateExpression(binary.right, &right), "evaluating the right-hand side of a binary expression");
 			TRY_LET(double* leftNumber, getNumber(left, &leftNumber), "getting the left-hand side of a + expression as a number");
 			TRY_LET(double* rightNumber, getNumber(right, &rightNumber), "getting the right-hand side of a + expression as a number");
 			return numberValue(pow(*leftNumber, *rightNumber), output);
 		}
 		case BINARY_OPERATION_EQUAL: {
-			TRY_LET(Value left, evaluateExpression(*binary.left, &left), "evaluating the left-hand side of a binary expression");
-			TRY_LET(Value right, evaluateExpression(*binary.right, &right), "evaluating the right-hand side of a binary expression");
+			TRY_LET(Value left, evaluateExpression(binary.left, &left), "evaluating the left-hand side of a binary expression");
+			TRY_LET(Value right, evaluateExpression(binary.right, &right), "evaluating the right-hand side of a binary expression");
 			return valuesAreEqual(left, right, output);
 		}
 		case BINARY_OPERATION_AND: {
-			TRY_LET(Value left, evaluateExpression(*binary.left, &left), "evaluating the left-hand side of a binary expression");
-			TRY_LET(Value right, evaluateExpression(*binary.right, &right), "evaluating the right-hand side of a binary expression");
+			TRY_LET(Value left, evaluateExpression(binary.left, &left), "evaluating the left-hand side of a binary expression");
+			TRY_LET(Value right, evaluateExpression(binary.right, &right), "evaluating the right-hand side of a binary expression");
 			TRY_LET(bool* leftBoolean, getBoolean(left, &leftBoolean), "getting the left-hand side of an \"and\" expression as a boolean");
 			TRY_LET(bool* rightBoolean, getBoolean(right, &rightBoolean), "getting the left-hand side of an \"and\" expression as a boolean");
 			return booleanValue(*leftBoolean && *rightBoolean, output);
 		}
 		case BINARY_OPERATION_OR: {
-			TRY_LET(Value left, evaluateExpression(*binary.left, &left), "evaluating the left-hand side of a binary expression");
-			TRY_LET(Value right, evaluateExpression(*binary.right, &right), "evaluating the right-hand side of a binary expression");
+			TRY_LET(Value left, evaluateExpression(binary.left, &left), "evaluating the left-hand side of a binary expression");
+			TRY_LET(Value right, evaluateExpression(binary.right, &right), "evaluating the right-hand side of a binary expression");
 			TRY_LET(bool* leftBoolean, getBoolean(left, &leftBoolean), "getting the left-hand side of an \"or\" expression as a boolean");
 			TRY_LET(bool* rightBoolean, getBoolean(right, &rightBoolean), "getting the left-hand side of an \"or\" expression as a boolean");
 			return booleanValue(*leftBoolean || *rightBoolean, output);
 		}
 		case BINARY_OPERATION_ASSIGN: {
-			if (binary.left->type != EXPRESSION_IDENTIFIER) {
+			if (binary.left.type != EXPRESSION_IDENTIFIER) {
 				RETURN_ERROR("Attempted to assign to non-identifier");
 			}
-			TRY_LET(Value right, evaluateExpression(*binary.right, &right), "evaluating the right-hand side of a binary expression");
-			return reassignVariable(CONTEXT->scope, (ScopeDeclaration) {.name = binary.left->data.identifier, .value = right});
+			TRY_LET(Value right, evaluateExpression(binary.right, &right), "evaluating the right-hand side of a binary expression");
+			return reassignVariable(CONTEXT->scope, (ScopeDeclaration) {.name = binary.left.data.identifier, .value = right});
 		}
 	}
 }
@@ -267,10 +267,28 @@ PRIVATE Result evaluateUnaryExpression(UnaryExpression unaryExpression, Value* o
 			TRY_LET(bool* boolean, getBoolean(operand, &boolean), "getting the boolean value in a unary not expression");
 			return booleanValue(!*boolean, output);
 		}
+		case UNARY_OPERATION_INDEX: {
+			TRY_LET(Value operand, evaluateExpression(unaryExpression.expression, &operand), "evaluating the operand of a unary not expression");
+			TRY_LET(Value index, evaluateExpression(unaryExpression.operation.data.index, &index), "evaluating the index of an index expression");
+
+			if (isString(index)) {
+				UNWRAP_LET(String * string, getString(index, &string));
+				TRY_LET(Value * field, getValueField(operand, *string, &field), "getting a field from an index expression");
+				RETURN_OK(output, *field);
+			}
+
+			if (isNumber(index) && isList(operand)) {
+				UNWRAP_LET(double* number, getNumber(index, &number));
+				UNWRAP_LET(ValueList * list, getList(operand, &list));
+				RETURN_OK(output, list->data[(int) *number - 1]);
+			}
+
+			RETURN_ERROR("Invalid index expression");
+		}
 	}
 }
 
-PRIVATE Result evaluateExpression(Expression expression, Value* output) {
+Result evaluateExpression(Expression expression, Value* output) {
 	switch (expression.type) {
 		case EXPRESSION_OBJECT: {
 			return evaluateObject(*expression.data.object, output);
@@ -292,7 +310,7 @@ PRIVATE Result evaluateExpression(Expression expression, Value* output) {
 			return evaluateIfExpression(*expression.data.ifExpression, output);
 		}
 		case EXPRESSION_BINARY: {
-			return evaluateBinaryExpression(expression.data.binary, output);
+			return evaluateBinaryExpression(*expression.data.binary, output);
 		}
 		case EXPRESSION_STRING: {
 			return stringValue(expression.data.string, output);

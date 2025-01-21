@@ -4,7 +4,7 @@
 Result typeOf(Expression expression, Type* output) {
 	switch (expression.type) {
 		default: {
-			RETURN_ERROR("");
+			RETURN_ERROR("get type unimplemented");
 		}
 	}
 }

@@ -1,4 +1,5 @@
 #include "../include/builtin.h"
+#include "../include/list.h"
 #include "../include/parser.h"
 #include "../include/result.h"
 #include "../include/sugar.h"

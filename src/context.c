@@ -201,5 +201,5 @@ void freeContext(Context context) {
 	freeScope(context.globalScope);
 }
 
-IMPLEMENT_LIST(Scope)
-IMPLEMENT_LIST(ScopeDeclaration)
+IMPLEMENT_KLEIN_LIST(Scope)
+IMPLEMENT_KLEIN_LIST(ScopeDeclaration)

@@ -1,14 +1,11 @@
 #ifndef RESULT_H
 #define RESULT_H
 
+#include "../bindings/c/klein.h"
 #include "util.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-
-typedef struct {
-	char* errorMessage;
-} Result;
 
 bool isOk(Result result);
 bool isError(Result result);

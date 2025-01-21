@@ -1,4 +1,5 @@
 #include "../include/parser.h"
+#include "../bindings/c/klein.h"
 #include "../include/context.h"
 #include "../include/lexer.h"
 #include "../include/list.h"
@@ -157,7 +158,6 @@ PRIVATE Result parseTypeLiteral(TokenList* tokens, TypeLiteral* output) {
 			*function = (Function) {
 				.parameters = parameterTypes,
 				.returnType = returnType,
-				.thisObject = NULL,
 			};
 
 			// Create expression
@@ -837,19 +837,19 @@ PRIVATE Result parseFieldAccess(TokenList* tokens, Expression* output) {
 
 	while (nextTokenIs(tokens, TOKEN_TYPE_DOT)) {
 		UNWRAP_LET(String next, popToken(tokens, TOKEN_TYPE_DOT, &next));
-		Expression* right = malloc(sizeof(Expression));
-		TRY(parseIdentifierLiteral(tokens, right), "parsing the right-hand sde of a field access expression");
+		Expression right;
+		TRY(parseIdentifierLiteral(tokens, &right), "parsing the right-hand sde of a field access expression");
 
-		Expression* newLeft = malloc(sizeof(Expression));
-		*newLeft = left;
+		BinaryExpression* binary = malloc(sizeof(BinaryExpression));
+		*binary = (BinaryExpression) {
+			.left = left,
+			.right = right,
+			.operation = BINARY_OPERATION_DOT,
+		};
 		left = (Expression) {
 			.type = EXPRESSION_BINARY,
 			.data = (ExpressionData) {
-				.binary = (BinaryExpression) {
-					.left = newLeft,
-					.right = right,
-					.operation = BINARY_OPERATION_DOT,
-				},
+				.binary = binary,
 			},
 		};
 	}
@@ -865,20 +865,19 @@ PRIVATE Result parseBinaryOperation(TokenList* tokens, BinaryOperator operator, 
 
 		TRY_LET(BinaryOperation operation, binaryOperationOf(next, &operation), "getting a binary operation");
 
-		Expression* right = malloc(sizeof(Expression));
-		TRY(parsePrecedentBinaryOperation(tokens, operator, right), "parsing the right-hand side of a binary operation");
+		Expression right;
+		TRY(parsePrecedentBinaryOperation(tokens, operator, & right), "parsing the right-hand side of a binary operation");
 
-		Expression* newLeft = malloc(sizeof(Expression));
-		*newLeft = left;
-
+		BinaryExpression* binary = malloc(sizeof(BinaryExpression));
+		*binary = (BinaryExpression) {
+			.left = left,
+			.right = right,
+			.operation = operation,
+		};
 		left = (Expression) {
 			.type = EXPRESSION_BINARY,
 			.data = (ExpressionData) {
-				.binary = (BinaryExpression) {
-					.left = newLeft,
-					.right = right,
-					.operation = operation,
-				},
+				.binary = binary,
 			},
 		};
 	}
@@ -893,42 +892,73 @@ PRIVATE Result parseExpression(TokenList* tokens, Expression* output) {
 PRIVATE Result parsePostfixExpression(TokenList* tokens, Expression* output) {
 	TRY_LET(Expression expression, parseFieldAccess(tokens, &expression), "");
 
-	while (nextTokenIs(tokens, TOKEN_TYPE_LEFT_PARENTHESIS)) {
-		UNWRAP_LET(String next, popToken(tokens, TOKEN_TYPE_LEFT_PARENTHESIS, &next));
+	while (nextTokenIsOneOf(tokens, (TokenType[]) {TOKEN_TYPE_LEFT_PARENTHESIS, TOKEN_TYPE_LEFT_BRACKET}, 2)) {
 
-		// Parse arguments
-		ExpressionList arguments;
-		TRY(emptyExpressionList(&arguments), "creating a function call's argument list");
-		while (!nextTokenIs(tokens, TOKEN_TYPE_RIGHT_PARENTHESIS)) {
-			TRY_LET(Expression argument, parseExpression(tokens, &argument), "parsing a function call's argument");
-			TRY(appendToExpressionList(&arguments, argument), "appending to a function call's argument list");
+		// Index
+		if (nextTokenIs(tokens, TOKEN_TYPE_LEFT_BRACKET)) {
+			UNWRAP_LET(String next, popToken(tokens, TOKEN_TYPE_LEFT_BRACKET, &next));
+			TRY_LET(Expression index, parseExpression(tokens, &index), "parsing an index expression");
+			TRY(popToken(tokens, TOKEN_TYPE_RIGHT_BRACKET, &next), "parsing a closing bracket on an index expression");
 
-			// Comma
-			if (!nextTokenIs(tokens, TOKEN_TYPE_RIGHT_PARENTHESIS)) {
-				TRY(popToken(tokens, TOKEN_TYPE_COMMA, &next), "attempting to consume a comma after a function call's argument");
-			}
+			UnaryExpression* unary = malloc(sizeof(UnaryExpression));
+			ASSERT_NONNULL(unary);
+			*unary = (UnaryExpression) {
+				.expression = expression,
+				.operation = (UnaryOperation) {
+					.type = UNARY_OPERATION_INDEX,
+					.data = (UnaryOperationData) {
+						.index = index,
+					},
+				},
+			};
+			expression = (Expression) {
+				.type = EXPRESSION_UNARY,
+				.data = (ExpressionData) {
+					.unary = unary,
+				},
+			};
+			continue;
 		}
 
-		TRY(popToken(tokens, TOKEN_TYPE_RIGHT_PARENTHESIS, &next), "parsing the closing parentheses on a function call");
+		// Function call
+		if (nextTokenIs(tokens, TOKEN_TYPE_LEFT_PARENTHESIS)) {
+			UNWRAP_LET(String next, popToken(tokens, TOKEN_TYPE_LEFT_PARENTHESIS, &next));
 
-		UnaryExpression* unary = malloc(sizeof(UnaryExpression));
-		ASSERT_NONNULL(unary);
-		*unary = (UnaryExpression) {
-			.expression = expression,
-			.operation = (UnaryOperation) {
-				.type = UNARY_OPERATION_FUNCTION_CALL,
-				.data = (UnaryOperationData) {
-					.functionCall = arguments,
+			// Parse arguments
+			ExpressionList arguments;
+			TRY(emptyExpressionList(&arguments), "creating a function call's argument list");
+			while (!nextTokenIs(tokens, TOKEN_TYPE_RIGHT_PARENTHESIS)) {
+				TRY_LET(Expression argument, parseExpression(tokens, &argument), "parsing a function call's argument");
+				TRY(appendToExpressionList(&arguments, argument), "appending to a function call's argument list");
+
+				// Comma
+				if (!nextTokenIs(tokens, TOKEN_TYPE_RIGHT_PARENTHESIS)) {
+					TRY(popToken(tokens, TOKEN_TYPE_COMMA, &next), "attempting to consume a comma after a function call's argument");
+				}
+			}
+
+			TRY(popToken(tokens, TOKEN_TYPE_RIGHT_PARENTHESIS, &next), "parsing the closing parentheses on a function call");
+
+			UnaryExpression* unary = malloc(sizeof(UnaryExpression));
+			ASSERT_NONNULL(unary);
+			*unary = (UnaryExpression) {
+				.expression = expression,
+				.operation = (UnaryOperation) {
+					.type = UNARY_OPERATION_FUNCTION_CALL,
+					.data = (UnaryOperationData) {
+						.functionCall = arguments,
+					},
 				},
-			},
-		};
+			};
 
-		expression = (Expression) {
-			.type = EXPRESSION_UNARY,
-			.data = (ExpressionData) {
-				.unary = unary,
-			},
-		};
+			expression = (Expression) {
+				.type = EXPRESSION_UNARY,
+				.data = (ExpressionData) {
+					.unary = unary,
+				},
+			};
+			continue;
+		}
 	}
 
 	RETURN_OK(output, expression);
@@ -1158,7 +1188,7 @@ PRIVATE Result parseStatement(TokenList* tokens, Statement* output) {
  * returned. If an unexpected token is encountered while parsing (i.e. the user entered
  * malformatted syntax), an error is returned.
  */
-Result parse(TokenList* tokens, Program* output) {
+PRIVATE Result parseTokens(TokenList* tokens, Program* output) {
 	StatementList statements;
 	TRY(emptyStatementList(&statements), "creating the programs statement list");
 	while (!isTokenListEmpty(*tokens)) {
@@ -1170,12 +1200,26 @@ Result parse(TokenList* tokens, Program* output) {
 	RETURN_OK(output, (Program) {.statements = statements});
 }
 
-IMPLEMENT_LIST(Declaration)
-IMPLEMENT_LIST(Statement)
-IMPLEMENT_LIST(Expression)
-IMPLEMENT_LIST(Parameter)
-IMPLEMENT_LIST(Field)
-IMPLEMENT_LIST(Internal)
-IMPLEMENT_LIST(ValueField)
-IMPLEMENT_LIST(Value)
-IMPLEMENT_LIST(IfExpression)
+Result parseKlein(String code, Program* output) {
+	TokenList tokens;
+	TRY(tokenizeKlein(code, &tokens), "tokenizing the program's source code");
+	TRY_LET(Program program, parseTokens(&tokens, &program), "parsing the program");
+	RETURN_OK(output, program);
+}
+
+Result parseKleinExpression(String code, Expression* output) {
+	TokenList tokens;
+	TRY(tokenizeKlein(code, &tokens), "tokenizing the program's source code");
+	TRY_LET(Expression expression, parseExpression(&tokens, &expression), "parsing an expression");
+	RETURN_OK(output, expression);
+}
+
+IMPLEMENT_KLEIN_LIST(Declaration)
+IMPLEMENT_KLEIN_LIST(Statement)
+IMPLEMENT_KLEIN_LIST(Expression)
+IMPLEMENT_KLEIN_LIST(Parameter)
+IMPLEMENT_KLEIN_LIST(Field)
+IMPLEMENT_KLEIN_LIST(Internal)
+IMPLEMENT_KLEIN_LIST(ValueField)
+IMPLEMENT_KLEIN_LIST(Value)
+IMPLEMENT_KLEIN_LIST(IfExpression)

@@ -1,30 +1,13 @@
 #ifndef LIST_H
 #define LIST_H
 
+#include "../bindings/c/klein.h"
 #include "result.h"
 #include "util.h"
-#include <stdbool.h>
-#include <stdlib.h>
 
 typedef char Char;
 
-#define DEFINE_LIST(type)                                       \
-	typedef struct type##List type##List;                       \
-	struct type##List {                                         \
-		size_t size;                                            \
-		size_t capacity;                                        \
-		type* data;                                             \
-	};                                                          \
-                                                                \
-	Result empty##type##List(type##List* output);               \
-	Result emptyHeap##type##List(type##List** output);          \
-	Result appendTo##type##List(type##List* list, type value);  \
-	Result prependTo##type##List(type##List* list, type value); \
-	bool is##type##ListEmpty(type##List list);                  \
-	Result pop##type##List(type##List* list);                   \
-	type getFrom##type##ListUnchecked(type##List list, size_t index);
-
-#define IMPLEMENT_LIST(type)                                                         \
+#define IMPLEMENT_KLEIN_LIST(type)                                                   \
 	Result empty##type##List(type##List* output) {                                   \
 		*output = (type##List) {                                                     \
 			.size = 0,                                                               \
@@ -67,7 +50,7 @@ typedef char Char;
 			ASSERT_NONNULL(list->data);                                              \
 		}                                                                            \
                                                                                      \
-		for (size_t index = list->size; index > 0; index--) {                        \
+		for (unsigned long index = list->size; index > 0; index--) {                 \
 			list->data[index] = list->data[index - 1];                               \
 		}                                                                            \
                                                                                      \
@@ -82,7 +65,7 @@ typedef char Char;
 			return error("Attempted to pop from an empty list");                     \
 		}                                                                            \
                                                                                      \
-		for (size_t index = 0; index < list->size - 1; index++) {                    \
+		for (unsigned long index = 0; index < list->size - 1; index++) {             \
 			list->data[index] = list->data[index + 1];                               \
 		}                                                                            \
                                                                                      \
@@ -91,11 +74,11 @@ typedef char Char;
 		return OK;                                                                   \
 	}                                                                                \
                                                                                      \
-	bool is##type##ListEmpty(type##List list) {                                      \
+	int is##type##ListEmpty(type##List list) {                                       \
 		return list.size == 0;                                                       \
 	}                                                                                \
                                                                                      \
-	type getFrom##type##ListUnchecked(type##List list, size_t index) {               \
+	type getFrom##type##ListUnchecked(type##List list, unsigned long index) {        \
 		return list.data[index];                                                     \
 	}
 
@@ -110,25 +93,25 @@ typedef char Char;
  * Note that this macro really confuses `clang-format`; It's recommended to use
  * `END;` afterwards to close loop block.
  */
-#define FOR_EACH(name__, list__)                                 \
-	for (size_t index__ = 0; index__ < list__.size; index__++) { \
+#define FOR_EACH(name__, list__)                                        \
+	for (unsigned long index__ = 0; index__ < list__.size; index__++) { \
 		name__ = list__.data[index__];
 
-#define FOR_EACHP(name__, list__)                                 \
-	for (size_t index__ = 0; index__ < list__->size; index__++) { \
+#define FOR_EACHP(name__, list__)                                        \
+	for (unsigned long index__ = 0; index__ < list__->size; index__++) { \
 		name__ = list__->data[index__];
 
-#define FOR_EACH_REF(name__, list__)                             \
-	for (size_t index__ = 0; index__ < list__.size; index__++) { \
+#define FOR_EACH_REF(name__, list__)                                    \
+	for (unsigned long index__ = 0; index__ < list__.size; index__++) { \
 		name__ = &list__.data[index__];
 
-#define FOR_EACH_REFP(name__, list__)                             \
-	for (size_t index__ = 0; index__ < list__->size; index__++) { \
+#define FOR_EACH_REFP(name__, list__)                                    \
+	for (unsigned long index__ = 0; index__ < list__->size; index__++) { \
 		name__ = &list__->data[index__];
 
 #define END }
 
-DEFINE_LIST(Char)
-DEFINE_LIST(String)
+DEFINE_KLEIN_LIST(Char)
+DEFINE_KLEIN_LIST(String)
 
 #endif

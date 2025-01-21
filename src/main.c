@@ -1,7 +1,5 @@
 #include "../include/context.h"
 #include "../include/io.h"
-#include "../include/lexer.h"
-#include "../include/parser.h"
 #include "../include/result.h"
 #include "../include/runner.h"
 #include "../include/stdlib.h"
@@ -61,7 +59,7 @@ PRIVATE Result runFile(int numberOfArguments, String arguments[]) {
 		return error("Invalid command");
 	}
 
-	// Not a .klein file
+	// Not a .kl file
 	char* dot = strrchr(filePath, '.');
 	if (!dot || strcmp(dot, ".kl")) {
 		fprintf(stderr, "\n%s Attempting to run a file that doesn't end with %s. Continue?: ", STYLE("Warning: ", YELLOW, BOLD), COLOR(".kl", CYAN));
@@ -74,8 +72,7 @@ PRIVATE Result runFile(int numberOfArguments, String arguments[]) {
 	}
 
 	// Read source code
-	String rawSourceCode;
-	TRY(readFile(filePath, &rawSourceCode), "reading the program's main file");
+	TRY_LET(String rawSourceCode, readFile(filePath, &rawSourceCode), "reading the program's main file");
 
 	// Stdlib
 	String sourceCode = malloc(strlen(rawSourceCode) + strlen(STDLIB) + 1);
@@ -86,18 +83,12 @@ PRIVATE Result runFile(int numberOfArguments, String arguments[]) {
 	strcat(sourceCode, rawSourceCode);
 	free(rawSourceCode);
 
-	// Tokenize
-	TokenList tokens;
-	TRY(tokenize(sourceCode, &tokens), "tokenizing the program's source code");
-	free(sourceCode);
-
 	// Context
-	CONTEXT = malloc(sizeof(Context));
-	TRY(newContext(CONTEXT), "creating the programs context");
+	TRY_LET(Context context, newContext(&context), "creating the programs context");
+	CONTEXT = &context;
 
 	// Parse
-	Program program;
-	TRY(parse(&tokens, &program), "parsing the program");
+	TRY_LET(Program program, parseKlein(sourceCode, &program), "parsing the program");
 
 	// Run
 	TRY(run(program), "running the program");

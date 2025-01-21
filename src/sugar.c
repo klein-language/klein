@@ -2,6 +2,8 @@
 #include "../include/builtin.h"
 #include "../include/parser.h"
 
+Result evaluateExpression(Expression expression, Value* output);
+
 Result stringValue(String string, Value* output) {
 
 	// Internals
@@ -51,6 +53,21 @@ Result numberValue(double number, Value* output) {
 	// Fields
 	ValueFieldList* fields;
 	TRY(emptyHeapValueFieldList(&fields), "creating the field list for a number expression");
+
+	// .to()
+	String to = ""
+				"function(low: Number, high: Number): List {"
+				"    let numbers = [];"
+				"    let current = low;"
+				"    while current <= high {"
+				"        numbers.append(current);"
+				"        current = current + 1;"
+				"    };"
+				"    return numbers;"
+				"}";
+	TRY_LET(Expression parsed, parseKleinExpression(to, &parsed), "parsing Number.to()");
+	TRY_LET(Value toValue, evaluateExpression(parsed, &toValue), "evaluating Number.to()");
+	TRY(appendToValueFieldList(fields, (ValueField) {.name = "to", .value = toValue}), "appending the field Number.to() to a number's field list");
 
 	// .mod()
 	BuiltinFunction function;

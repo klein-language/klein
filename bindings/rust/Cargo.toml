@@ -1,0 +1,12 @@
+[package]
+name = "klein"
+version = "0.1.0"
+edition = "2021"
+
+[build-dependencies]
+bindgen = "0.71.1"
+
+[dependencies]
+strum = "0.26.3"
+strum_macros = "0.26.4"
+thiserror = "2.0.11"

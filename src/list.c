@@ -1,4 +1,4 @@
 #include "../include/list.h"
 
-IMPLEMENT_LIST(Char)
-IMPLEMENT_LIST(String)
+IMPLEMENT_KLEIN_LIST(Char)
+IMPLEMENT_KLEIN_LIST(String)

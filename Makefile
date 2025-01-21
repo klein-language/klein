@@ -1,17 +1,20 @@
-CC = clang
-LOCATION = /usr/bin
-DEBUG = false
+# Customizeable
+CC = clang # The C compiler to use
+LOCATION = /usr/bin # Where to install
+EXE = klein # Name of the executable
 
-MAKEFLAGS += --silent
-
+# Probably don't change these
 CACHEDIR = ./.cache
 OBJDIR = $(CACHEDIR)/obj
 VALGRINDDIR = $(CACHEDIR)/valgrind
-TARGET = ./build/klein
-TESTFILE = ./tests/test.kl
+BUILDDIR = ./build
+TARGET = $(BUILDDIR)/$(EXE)
+TESTFILE = ./tests/klein/test.kl
 
 SRCS = $(wildcard src/*.c)
 OBJS = $(SRCS:src/%.c=$(OBJDIR)/%.o)
+
+MAKEFLAGS += --silent
 
 # Clang flags
 ifeq ($(CC), clang)
@@ -21,11 +24,6 @@ endif
 # gcc flags
 ifeq ($(CC), gcc)
 	CFLAGS = -Wall -Wextra
-endif
-
-# Debug
-ifeq ($(DEBUG), true)
-	CFLAGS += -DDEBUG_ON
 endif
 
 # Build when just running `make`
@@ -54,20 +52,26 @@ clean:
 	mkdir $(CACHEDIR)
 	mkdir $(VALGRINDDIR)
 	mkdir $(OBJDIR)
-	rm build -rf
-	mkdir build
+	rm $(BUILDDIR) -rf
+	mkdir $(BUILDDIR)
 
 # Run on the test file
 test: build
 	$(TARGET) $(TESTFILE)
 
-# Run with debug mode
-debug: CFLAGS += -DDEBUG_ON
-debug: test
-
 # Install on the system
 install: build
 	sudo mkdir -p $(LOCATION)
-	sudo mv $(TARGET) $(LOCATION)/klein
+	sudo mv $(TARGET) $(LOCATION)/$(EXE)
 
-.PHONY: all clean check build test install debug
+# Build static library
+c-bindings: $(OBJS)
+	ar rcs ./bindings/c/klein.a $(OBJDIR)/*.o
+	$(CC) -shared -fPIC -o ./bindings/c/libklein.so $(SRCS)
+
+rust-bindings: c-bindings
+	cd bindings/rust; cargo build; cargo test -- --nocapture
+
+bindings: rust-bindings
+
+.PHONY: all clean check build test install package
