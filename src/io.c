@@ -12,7 +12,11 @@ KleinResult readFile(String path, String* output) {
 
 	// Open file
 	FILE* file = fopen(path, "rb");
-	ASSERT_NONNULL(file);
+	if (file == NULL) {
+		return (KleinResult) {
+			.type = KLEIN_ERROR_INTERNAL,
+		};
+	}
 
 	// Get file size
 	fseek(file, 0, SEEK_END);
@@ -21,7 +25,6 @@ KleinResult readFile(String path, String* output) {
 
 	// Allocate space
 	char* buffer = malloc((unsigned long) length + 1);
-	ASSERT_NONNULL(buffer);
 
 	// Read & close file
 	fread(buffer, 1, (unsigned long) length, file);

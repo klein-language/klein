@@ -8,6 +8,7 @@
 #ifndef KLEIN_H
 #define KLEIN_H
 
+typedef struct Expression Expression;
 typedef struct BinaryExpression BinaryExpression;
 typedef struct TypeDeclaration TypeDeclaration;
 typedef struct Scope Scope;
@@ -19,26 +20,36 @@ typedef struct ForLoop ForLoop;
 typedef struct WhileLoop WhileLoop;
 typedef struct IfExpressionList IfExpressionList;
 typedef struct Function Function;
+typedef struct Value Value;
 
-#define DEFINE_KLEIN_LIST(type)                                      \
-	typedef struct type##List type##List;                            \
-	struct type##List {                                              \
-		unsigned long size;                                          \
-		unsigned long capacity;                                      \
-		type* data;                                                  \
-	};                                                               \
-                                                                     \
-	KleinResult empty##type##List(type##List* output);               \
-	KleinResult emptyHeap##type##List(type##List** output);          \
-	KleinResult appendTo##type##List(type##List* list, type value);  \
-	KleinResult prependTo##type##List(type##List* list, type value); \
-	int is##type##ListEmpty(type##List list);                        \
-	KleinResult pop##type##List(type##List* list);                   \
-	type getFrom##type##ListUnchecked(type##List list, unsigned long index);
+#define DEFINE_KLEIN_LIST(type)                               \
+	typedef struct type##List type##List;                     \
+	struct type##List {                                       \
+		unsigned long size;                                   \
+		unsigned long capacity;                               \
+		type* data;                                           \
+	};                                                        \
+                                                              \
+	type##List empty##type##List();                           \
+	type##List* emptyHeap##type##List();                      \
+	void appendTo##type##List(type##List* list, type value);  \
+	void prependTo##type##List(type##List* list, type value); \
+	int is##type##ListEmpty(type##List list);                 \
+	void pop##type##List(type##List* list);                   \
+	type getFrom##type##ListUnchecked(type##List list, unsigned long index)
 
-typedef struct {
-	char* errorMessage;
-} KleinResult;
+// Enums --------------------------------------------------------------------------------------------------------------------------------------------
+
+typedef enum {
+	INTERNAL_KEY_STRING,
+	INTERNAL_KEY_NUMBER,
+	INTERNAL_KEY_BOOLEAN,
+	INTERNAL_KEY_LIST,
+	INTERNAL_KEY_NULL,
+	INTERNAL_KEY_FUNCTION,
+	INTERNAL_KEY_THIS_OBJECT,
+	INTERNAL_KEY_BUILTIN_FUNCTION
+} InternalKey;
 
 typedef enum {
 
@@ -90,16 +101,94 @@ typedef enum {
 
 	// Ignored
 	TOKEN_TYPE_WHITESPACE,
-	TOKEN_TYPE_COMMENT
+	TOKEN_TYPE_COMMENT,
+	TOKEN_TYPE_EOF
 
 } TokenType;
+
+typedef enum {
+
+	// Internal
+
+	KLEIN_OK,
+	KLEIN_ERROR_INTERNAL,
+
+	// Lexer errors
+
+	KLEIN_ERROR_UNRECOGNIZED_TOKEN,
+
+	// Parser errors
+
+	KLEIN_ERROR_UNEXPECTED_TOKEN,
+	KLEIN_ERROR_PEEK_EMPTY_TOKEN_STREAM,
+
+	// Runner errors
+
+	KLEIN_ERROR_MISSING_FIELD,
+	KLEIN_ERROR_ASSIGN_TO_NON_IDENTIFIER,
+	KLEIN_ERROR_INCORRECT_ARGUMENT_COUNT,
+	KLEIN_ERROR_INVALID_INDEX,
+	KLEIN_ERROR_DUPLICATE_VARIABLE_DECLARATION,
+	KLEIN_ERROR_REFERENCE_UNDEFINED_VARIABLE
+
+} KleinResultType;
+
+// Errors -------------------------------------------------------------------------------------------------------------------------------------------
+
+typedef struct {
+	Value* value;
+	InternalKey* internal;
+} KleinValueMissingInternalError;
+
+typedef struct {
+	Value* value;
+	char* name;
+} KleinValueMissingFieldError;
+
+typedef struct {
+	TokenType expected;
+	TokenType actual;
+} KleinUnexpectedTokenError;
+
+typedef struct {
+	unsigned long expected;
+	unsigned long actual;
+} KleinIncorrectArgumentCountError;
+
+typedef union {
+
+	// Lexer errors
+
+	char* unrecognizedToken;
+
+	// Parser errors
+
+	KleinUnexpectedTokenError unexpectedToken;
+
+	// Runner errors
+
+	KleinValueMissingInternalError missingInternal;
+	KleinValueMissingFieldError missingField;
+	Expression* assignToNonIdentifier;
+	KleinIncorrectArgumentCountError incorrectArgumentCount;
+	char* duplicateVariableDeclaration;
+	char* referenceUndefinedVariable;
+
+} KleinResultData;
+
+typedef struct {
+	KleinResultType type;
+	KleinResultData data;
+} KleinResult;
+
+// Lexer --------------------------------------------------------------------------------------------------------------------------------------------
 
 typedef struct {
 	TokenType type;
 	char* value;
 } Token;
 
-DEFINE_KLEIN_LIST(Token)
+// Typechecker -------------------------------------------------------------------------------------------------------------------------------------
 
 typedef union {
 	char* identifier;
@@ -150,6 +239,8 @@ typedef struct {
 	TypeType type;
 } Type;
 
+// Parser ------------------------------------------------------------------------------------------------------------------------------------------
+
 typedef struct {
 	StatementList* statements;
 	Scope* innerScope;
@@ -187,7 +278,7 @@ typedef struct {
 
 } Parameter;
 
-DEFINE_KLEIN_LIST(Parameter)
+DEFINE_KLEIN_LIST(Parameter);
 
 struct Function {
 
@@ -269,13 +360,13 @@ struct Expression {
 	ExpressionData data;
 };
 
-DEFINE_KLEIN_LIST(Expression)
-
 struct BinaryExpression {
 	Expression left;
 	BinaryOperation operation;
 	Expression right;
 };
+
+DEFINE_KLEIN_LIST(Expression);
 
 typedef union {
 	ExpressionList functionCall;
@@ -297,7 +388,7 @@ typedef struct {
 	Expression value;
 } Field;
 
-DEFINE_KLEIN_LIST(Field)
+DEFINE_KLEIN_LIST(Field);
 
 struct Object {
 	FieldList fields;
@@ -315,8 +406,6 @@ typedef struct {
 	Expression value;
 } Declaration;
 
-DEFINE_KLEIN_LIST(Declaration);
-
 typedef union {
 	Declaration declaration;
 	Expression expression;
@@ -327,8 +416,6 @@ typedef struct {
 	StatementData data;
 	StatementType type;
 } Statement;
-
-DEFINE_KLEIN_LIST(Statement)
 
 typedef struct BinaryOperator BinaryOperator;
 struct BinaryOperator {
@@ -353,7 +440,7 @@ typedef struct {
 	Block body;
 } IfExpression;
 
-DEFINE_KLEIN_LIST(IfExpression)
+DEFINE_KLEIN_LIST(Statement);
 
 /**
  * A program's abstract syntax tree.
@@ -363,65 +450,19 @@ typedef struct {
 	StatementList statements;
 } Program;
 
-/**
- * Tokenizes the given string of Klein source code into a list of tokens.
- * This is the first step of interpreting Klein code.
- *
- * # Parameters
- *
- * - `sourceCode` - The original, Klein source code. It may contain
- *   syntax and semantic errors and this function will still return `OK`
- *   as long as each individual token in the code is a valid Klein token.
- *   It mustn't be `NULL`.
- *
- * - `output` - Where to store the resulting `TokenList`. It must point to
- *   some memory (be it stack or heap) that already has enough space to hold
- *   a `TokenList`; i.e. it could be the address of stack token or the result of
- *   `malloc(sizeof(TokenList))`, but it can't be `NULL`, or an error will be returned.
- *   The outputted tokens have copied strings from the original source code (because
- *   they need to be null-terminated and the original source code is contiguous),
- *   so it's not dependent on `sourceCode` being valid; i.e., if the string stored at
- *   `sourceCode` is freed, `output` will still be valid.
- *
- * # Errors
- *
- * If memory for the token list fails to allocate, an error is returned.
- * If the source code contains unrecognized tokens, an error is returned.
- * If the given `sourceCode` or `output` is `NULL`, an error is returned.
- */
-KleinResult tokenizeKlein(char* sourceCode, TokenList* output);
-
-KleinResult parseKlein(char* code, Program* output);
-KleinResult parseKleinExpression(char* code, Expression* output);
-
-KleinResult runKlein(char* code);
-
-typedef enum {
-	INTERNAL_KEY_STRING,
-	INTERNAL_KEY_NUMBER,
-	INTERNAL_KEY_BOOLEAN,
-	INTERNAL_KEY_LIST,
-	INTERNAL_KEY_NULL,
-	INTERNAL_KEY_FUNCTION,
-	INTERNAL_KEY_THIS_OBJECT,
-	INTERNAL_KEY_BUILTIN_FUNCTION
-} InternalKey;
-
 typedef struct {
 	InternalKey key;
 	void* value;
 } Internal;
 
-DEFINE_KLEIN_LIST(Internal)
-
 typedef struct ValueFieldList ValueFieldList;
 
-typedef struct {
+DEFINE_KLEIN_LIST(Internal);
+
+struct Value {
 	ValueFieldList* fields;
 	InternalList internals;
-} Value;
-
-DEFINE_KLEIN_LIST(Value);
+};
 
 typedef struct {
 	char* name;
@@ -429,5 +470,24 @@ typedef struct {
 } ValueField;
 
 DEFINE_KLEIN_LIST(ValueField);
+
+// Lists -------------------------------------------------------------------------------------------------------------------------------------------
+
+DEFINE_KLEIN_LIST(Value);
+DEFINE_KLEIN_LIST(Token);
+DEFINE_KLEIN_LIST(Declaration);
+DEFINE_KLEIN_LIST(IfExpression);
+
+// Functions ---------------------------------------------------------------------------------------------------------------------------------------
+
+KleinResult tokenizeKlein(char* sourceCode, TokenList* output);
+
+KleinResult parseKlein(char* code, Program* output);
+
+KleinResult parseKleinExpression(char* code, Expression* output);
+
+KleinResult runKlein(char* code);
+
+// -------------------------------------------------------------------------------------------------------------------------------------------------
 
 #endif

@@ -26,34 +26,34 @@
  * an error is returned.
  */
 KleinResult declareNewVariable(Scope* scope, ScopeDeclaration declaration) {
-	// Error - null scope
-	if (scope == NULL) {
-		RETURN_ERROR("Attempted to declare a variable to a NULL scope.");
-	}
-
 	// Error - Variable already exists
 	Value* value = NULL;
 	if (isOk(getVariable(*scope, declaration.name, &value))) {
-		RETURN_ERROR("Duplicate variable declaration for \"%s\"", declaration.name);
+		return (KleinResult) {
+			.type = KLEIN_ERROR_DUPLICATE_VARIABLE_DECLARATION,
+			.data = (KleinResultData) {
+				.duplicateVariableDeclaration = declaration.name,
+			},
+		};
 	}
 
 	// Add the variable
-	TRY(appendToScopeDeclarationList(&scope->variables, declaration), "appending the declaration for \"%s\" to the scope's declarations", declaration.name);
+	appendToScopeDeclarationList(&scope->variables, declaration);
 
 	// Return ok
 	return OK;
 }
 
 KleinResult reassignVariable(Scope* scope, ScopeDeclaration declaration) {
-	// Error - null scope
-	if (scope == NULL) {
-		RETURN_ERROR("Attempted to reassign a variable in a NULL scope");
-	}
-
 	// Variable already exists
 	Value* value = NULL;
 	if (isError(getVariable(*scope, declaration.name, &value))) {
-		RETURN_ERROR("Attempted to reference a variable called \"%s\", but no variable with that name exists where it was referenced.", declaration.name);
+		return (KleinResult) {
+			.type = KLEIN_ERROR_REFERENCE_UNDEFINED_VARIABLE,
+			.data = (KleinResultData) {
+				.referenceUndefinedVariable = declaration.name,
+			},
+		};
 	}
 
 	// Add the variable
@@ -64,18 +64,13 @@ KleinResult reassignVariable(Scope* scope, ScopeDeclaration declaration) {
 }
 
 KleinResult setVariable(Scope* scope, ScopeDeclaration declaration) {
-	// Error - null scope
-	if (scope == NULL) {
-		RETURN_ERROR("Attempted to set a variable in a NULL scope");
-	}
-
 	// Variable already exists
 	Value* value = NULL;
 	getVariable(*scope, declaration.name, &value);
 
 	// Add the variable
 	if (value == NULL) {
-		TRY(appendToScopeDeclarationList(&scope->variables, declaration), "appending the declaration for \"%s\" to the scope's declarations", declaration.name);
+		appendToScopeDeclarationList(&scope->variables, declaration);
 	} else {
 		*value = declaration.value;
 	}
@@ -119,15 +114,17 @@ KleinResult getVariable(Scope scope, String name, Value** output) {
 		current = current->parent;
 	}
 
-	RETURN_ERROR("Attempted to reference a variable called \"%s\", but no variable with that name exists where it was referenced.", name);
+	return (KleinResult) {
+		.type = KLEIN_ERROR_REFERENCE_UNDEFINED_VARIABLE,
+		.data = (KleinResultData) {
+			.referenceUndefinedVariable = name,
+		},
+	};
 }
 
 KleinResult enterNewScope(void) {
-	ScopeList children;
-	TRY(emptyScopeList(&children), "creating the child scope list for a scope");
-
-	ScopeDeclarationList variables;
-	TRY(emptyScopeDeclarationList(&variables), "creating the variable list for a scope");
+	ScopeList children = emptyScopeList();
+	ScopeDeclarationList variables = emptyScopeDeclarationList();
 
 	Scope scope = (Scope) {
 		.parent = CONTEXT->scope,
@@ -135,7 +132,7 @@ KleinResult enterNewScope(void) {
 		.variables = variables,
 	};
 
-	TRY(appendToScopeList(&CONTEXT->scope->children, scope), "appending to the current scope's children list");
+	appendToScopeList(&CONTEXT->scope->children, scope);
 	CONTEXT->scope = &CONTEXT->scope->children.data[CONTEXT->scope->children.size - 1];
 
 	return OK;
@@ -143,7 +140,7 @@ KleinResult enterNewScope(void) {
 
 KleinResult exitScope(void) {
 	if (CONTEXT->scope->parent == NULL) {
-		RETURN_ERROR("Attempted to exit the global scope.");
+		UNREACHABLE;
 	}
 
 	CONTEXT->scope = CONTEXT->scope->parent;
@@ -165,11 +162,8 @@ KleinResult exitScope(void) {
  * If memory fails to allocate, an error is returned.
  */
 KleinResult newContext(Context* output) {
-	ScopeList children;
-	TRY(emptyScopeList(&children), "creating the context's scope list");
-
-	ScopeDeclarationList variables;
-	TRY(emptyScopeDeclarationList(&variables), "creating the context's variable list");
+	ScopeList children = emptyScopeList();
+	ScopeDeclarationList variables = emptyScopeDeclarationList();
 
 	Scope globalScope = (Scope) {
 		.parent = NULL,

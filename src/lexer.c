@@ -28,15 +28,11 @@
  *
  * If the given string value is null, an error is returned.
  */
-PRIVATE KleinResult createToken(TokenType type, String value, Token* output) {
-	ASSERT_NONNULL(value);
-	ASSERT_NONNULL(output);
-	Token token = (Token) {
+PRIVATE Token createToken(TokenType type, String value) {
+	return (Token) {
 		.type = type,
 		.value = value,
 	};
-
-	RETURN_OK(output, token);
 }
 
 /**
@@ -65,81 +61,77 @@ PRIVATE KleinResult createToken(TokenType type, String value, Token* output) {
  * returned.
  */
 PRIVATE KleinResult getNextToken(String sourceCode, Token* output) {
-	ASSERT_NONNULL(sourceCode);
-
 	char* current = sourceCode;
 
 	// Symbols
 	switch (*current) {
 		case '=':
 			if (strncmp("==", sourceCode, MIN(2, strlen(sourceCode))) == 0) {
-				return createToken(TOKEN_TYPE_DOUBLE_EQUALS, "==", output);
+				RETURN_OK(output, createToken(TOKEN_TYPE_DOUBLE_EQUALS, "=="));
 			}
-			return createToken(TOKEN_TYPE_EQUALS, "=", output);
+			RETURN_OK(output, createToken(TOKEN_TYPE_EQUALS, "="));
 		case '+':
-			return createToken(TOKEN_TYPE_PLUS, "+", output);
+			RETURN_OK(output, createToken(TOKEN_TYPE_PLUS, "+"));
 		case '.':
-			return createToken(TOKEN_TYPE_DOT, ".", output);
+			RETURN_OK(output, createToken(TOKEN_TYPE_DOT, "."));
 		case ',':
-			return createToken(TOKEN_TYPE_COMMA, ",", output);
+			RETURN_OK(output, createToken(TOKEN_TYPE_COMMA, ","));
 		case '<':
 			if (strncmp("<=", sourceCode, MIN(2, strlen(sourceCode))) == 0) {
-				return createToken(TOKEN_TYPE_LESS_THAN_OR_EQUAL_TO, "<=", output);
+				RETURN_OK(output, createToken(TOKEN_TYPE_LESS_THAN_OR_EQUAL_TO, "<="));
 			}
-			return createToken(TOKEN_TYPE_LESS_THAN, "<", output);
+			RETURN_OK(output, createToken(TOKEN_TYPE_LESS_THAN, "<"));
 		case '(':
-			return createToken(TOKEN_TYPE_LEFT_PARENTHESIS, "(", output);
+			RETURN_OK(output, createToken(TOKEN_TYPE_LEFT_PARENTHESIS, "("));
 		case '{':
-			return createToken(TOKEN_TYPE_LEFT_BRACE, "{", output);
+			RETURN_OK(output, createToken(TOKEN_TYPE_LEFT_BRACE, "{"));
 		case '[':
-			return createToken(TOKEN_TYPE_LEFT_BRACKET, "[", output);
+			RETURN_OK(output, createToken(TOKEN_TYPE_LEFT_BRACKET, "["));
 		case ']':
-			return createToken(TOKEN_TYPE_RIGHT_BRACKET, "]", output);
+			RETURN_OK(output, createToken(TOKEN_TYPE_RIGHT_BRACKET, "]"));
 		case '}':
-			return createToken(TOKEN_TYPE_RIGHT_BRACE, "}", output);
+			RETURN_OK(output, createToken(TOKEN_TYPE_RIGHT_BRACE, "}"));
 		case ')':
-			return createToken(TOKEN_TYPE_RIGHT_PARENTHESIS, ")", output);
+			RETURN_OK(output, createToken(TOKEN_TYPE_RIGHT_PARENTHESIS, ")"));
 		case ';':
-			return createToken(TOKEN_TYPE_SEMICOLON, ";", output);
+			RETURN_OK(output, createToken(TOKEN_TYPE_SEMICOLON, ";"));
 		case ':':
-			return createToken(TOKEN_TYPE_COLON, ":", output);
+			RETURN_OK(output, createToken(TOKEN_TYPE_COLON, ":"));
 		case ' ':
-			return createToken(TOKEN_TYPE_WHITESPACE, " ", output);
+			RETURN_OK(output, createToken(TOKEN_TYPE_WHITESPACE, " "));
 		case '\n':
-			return createToken(TOKEN_TYPE_WHITESPACE, "\n", output);
+			RETURN_OK(output, createToken(TOKEN_TYPE_WHITESPACE, "\n"));
 		case '\r':
-			return createToken(TOKEN_TYPE_WHITESPACE, "\r", output);
+			RETURN_OK(output, createToken(TOKEN_TYPE_WHITESPACE, "\r"));
 		case '\t':
-			return createToken(TOKEN_TYPE_WHITESPACE, "\t", output);
+			RETURN_OK(output, createToken(TOKEN_TYPE_WHITESPACE, "\t"));
 	}
 
 	// Number
 	if (*current >= '0' && *current <= '9') {
-		CharList characters;
-		TRY(emptyCharList(&characters), "creating the character list for a number token");
+		CharList characters = emptyCharList();
 		while ((*current >= '0' && *current <= '9') && current < sourceCode + strlen(sourceCode)) {
-			TRY(appendToCharList(&characters, *current), "appending to the number token's character list");
+			appendToCharList(&characters, *current);
 			current++;
 		}
-		TRY(appendToCharList(&characters, '\0'), "appending the null terminator on the number token's character list");
+		appendToCharList(&characters, '\0');
 
-		return createToken(TOKEN_TYPE_NUMBER, characters.data, output);
+		RETURN_OK(output, createToken(TOKEN_TYPE_NUMBER, characters.data));
 	}
 
 	// Identifier
 	if ((*current >= 'A' && *current <= 'Z') ||
 		(*current >= 'a' && *current <= 'z') || *current == '_') {
-		CharList identifierCharacters;
-		TRY(emptyCharList(&identifierCharacters), "creating the character list for an identifier token");
+		CharList identifierCharacters = emptyCharList();
 		while (((*current >= 'A' && *current <= 'Z') ||
 				(*current >= 'a' && *current <= 'z') ||
 				(*current >= '0' && *current <= '9') ||
 				*current == '_') &&
 			   current < sourceCode + strlen(sourceCode)) {
-			TRY(appendToCharList(&identifierCharacters, *current), "appending a character to the identifier token's character list");
+			appendToCharList(&identifierCharacters, *current);
 			current++;
 		}
-		TRY(appendToCharList(&identifierCharacters, '\0'), "appending the null terminator to the identifier token's character list");
+		appendToCharList(&identifierCharacters, '\0');
 		String identifier = identifierCharacters.data;
 
 		// Keywords
@@ -174,7 +166,7 @@ PRIVATE KleinResult getNextToken(String sourceCode, Token* output) {
 			type = TOKEN_TYPE_KEYWORD_ELSE;
 		}
 
-		return createToken(type, identifier, output);
+		RETURN_OK(output, createToken(type, identifier));
 	}
 
 	// String
@@ -182,43 +174,45 @@ PRIVATE KleinResult getNextToken(String sourceCode, Token* output) {
 		current++;
 
 		char quote = '"';
-		CharList stringCharacters;
-		TRY(emptyCharList(&stringCharacters), "creating the character list for a string token");
+		CharList stringCharacters = emptyCharList();
 
-		TRY(appendToCharList(&stringCharacters, quote), "appending the leading quote character to a string token's character list");
+		appendToCharList(&stringCharacters, quote);
 		while (*current != '"') {
-			TRY(appendToCharList(&stringCharacters, *current), "appending a character to a string tokne's character list");
+			appendToCharList(&stringCharacters, *current);
 			current++;
 		}
-		TRY(appendToCharList(&stringCharacters, quote), "appending the trailing quote to a string token's character list");
-		TRY(appendToCharList(&stringCharacters, '\0'), "appending the null terminator to a string token's character list");
+		appendToCharList(&stringCharacters, quote);
+		appendToCharList(&stringCharacters, '\0');
 
 		String string = stringCharacters.data;
 
-		return createToken(TOKEN_TYPE_STRING, string, output);
+		RETURN_OK(output, createToken(TOKEN_TYPE_STRING, string));
 	}
 
 	// Unrecognized
-	return error("Unrecognized token");
+	return (KleinResult) {
+		.type = KLEIN_ERROR_UNRECOGNIZED_TOKEN,
+		.data = (KleinResultData) {
+			.unrecognizedToken = strdup(current),
+		},
+	};
 }
-KleinResult tokenizeKlein(String sourceCode, TokenList* output) {
-	ASSERT_NONNULL(sourceCode);
-	ASSERT_NONNULL(output);
 
-	TRY(emptyTokenList(output), "creating the program's token list");
+KleinResult tokenizeKlein(String sourceCode, TokenList* output) {
+	*output = emptyTokenList();
 	size_t cursor = 0;
 	size_t sourceLength = strlen(sourceCode);
 
 	while (cursor != sourceLength) {
 		Token token;
-		TRY(getNextToken(sourceCode + cursor, &token), "getting the next token from the source code");
+		TRY(getNextToken(sourceCode + cursor, &token));
 		size_t length = strlen(token.value);
 		if (token.type != TOKEN_TYPE_WHITESPACE) {
 			if (token.type == TOKEN_TYPE_STRING) {
 				token.value[length - 1] = '\0';
 				token.value++;
 			}
-			TRY(appendToTokenList(output, token), "appending to the program's token list");
+			appendToTokenList(output, token);
 		}
 		cursor += length;
 	}
@@ -308,6 +302,8 @@ String tokenTypeName(TokenType type) {
 			return "comment";
 		case TOKEN_TYPE_WHITESPACE:
 			return "whitespace";
+		case TOKEN_TYPE_EOF:
+			return "end of file";
 	}
 }
 

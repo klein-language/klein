@@ -29,7 +29,9 @@
  */
 PRIVATE KleinResult runFile(int numberOfArguments, String arguments[]) {
 	if (numberOfArguments < 2) {
-		return error("Not enough arguments to run");
+		return (KleinResult) {
+			.type = KLEIN_ERROR_INTERNAL,
+		};
 	}
 
 	bool usingShorthand = true;
@@ -56,7 +58,9 @@ PRIVATE KleinResult runFile(int numberOfArguments, String arguments[]) {
 				STYLE("Error:", RED, BOLD),
 				filePath);
 		}
-		return error("Invalid command");
+		return (KleinResult) {
+			.type = KLEIN_ERROR_INTERNAL,
+		};
 	}
 
 	// Not a .kl file
@@ -72,11 +76,10 @@ PRIVATE KleinResult runFile(int numberOfArguments, String arguments[]) {
 	}
 
 	// Read source code
-	TRY_LET(String rawSourceCode, readFile(filePath, &rawSourceCode), "reading the program's main file");
+	TRY_LET(String rawSourceCode, readFile(filePath, &rawSourceCode));
 
 	// Stdlib
 	String sourceCode = malloc(strlen(rawSourceCode) + strlen(STDLIB) + 1);
-	ASSERT_NONNULL(sourceCode);
 	strcpy(sourceCode, STDLIB);
 
 	// Combine
@@ -84,14 +87,14 @@ PRIVATE KleinResult runFile(int numberOfArguments, String arguments[]) {
 	free(rawSourceCode);
 
 	// Context
-	TRY_LET(Context context, newContext(&context), "creating the programs context");
+	TRY_LET(Context context, newContext(&context));
 	CONTEXT = &context;
 
 	// Parse
-	TRY_LET(Program program, parseKlein(sourceCode, &program), "parsing the program");
+	TRY_LET(Program program, parseKlein(sourceCode, &program));
 
 	// Run
-	TRY(run(program), "running the program");
+	TRY(run(program));
 
 	// Done
 	return OK;
@@ -139,7 +142,7 @@ PRIVATE KleinResult mainWrapper(int numberOfArguments, String arguments[]) {
 int main(int numberOfArguments, String arguments[]) {
 	KleinResult attempt = mainWrapper(numberOfArguments, arguments);
 	if (isError(attempt)) {
-		fprintf(stderr, "\n%s %s\n\n", STYLE("Error:", RED, BOLD), attempt.errorMessage);
+		fprintf(stderr, "\n%s\n\n", STYLE("Error:", RED, BOLD));
 		return 1;
 	}
 

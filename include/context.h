@@ -6,14 +6,14 @@
 
 typedef struct Scope Scope;
 
-DEFINE_KLEIN_LIST(Scope)
+DEFINE_KLEIN_LIST(Scope);
 
 typedef struct {
 	String name;
 	Value value;
 } ScopeDeclaration;
 
-DEFINE_KLEIN_LIST(ScopeDeclaration)
+DEFINE_KLEIN_LIST(ScopeDeclaration);
 
 struct Scope {
 	Scope* parent;

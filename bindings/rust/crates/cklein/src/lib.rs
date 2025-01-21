@@ -1,2 +1,2 @@
-pub use cklein_core::{parse, run as run_unchecked, RuntimeError};
-pub use cklein_macros::run;
+pub use cklein_core::{check, parse, run, KleinError};
+pub use cklein_macros::run_static;

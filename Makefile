@@ -17,7 +17,7 @@ HEADER = ./bindings/c/klein.h
 SRCS = $(wildcard src/*.c)
 OBJS = $(SRCS:src/%.c=$(OBJDIR)/%.o)
 
-MAKEFLAGS += --silent
+#MAKEFLAGS += --silent
 
 # Clang flags
 ifeq ($(CC), clang)
@@ -57,8 +57,8 @@ clean:
 	mkdir $(OBJDIR)
 	rm $(BUILDDIR) -rf
 	mkdir $(BUILDDIR)
-	rm $(STATICLIB)
-	rm $(SHAREDLIB)
+	rm $(STATICLIB) -f
+	rm $(SHAREDLIB) -f
 
 # Run on the test file
 test: build
@@ -77,7 +77,7 @@ c-bindings: $(OBJS)
 rust-bindings: c-bindings
 	cp $(SHAREDLIB) bindings/rust/crates/cklein-core/lib
 	cp $(HEADER) bindings/rust/crates/cklein-core/lib
-	cd bindings/rust; cargo build; cargo test -- --nocapture
+	cd bindings/rust/crates/cklein-core; cargo build;
 
 bindings: rust-bindings
 

@@ -30,13 +30,21 @@
  */
 PRIVATE KleinResult input(ValueList* arguments, Value* output) {
 	if (arguments->size > 1) {
-		RETURN_ERROR("Too many arguments passed to builtin function input(): Expected 0-1 but found %lu", arguments->size);
+		return (KleinResult) {
+			.type = KLEIN_ERROR_INCORRECT_ARGUMENT_COUNT,
+			.data = (KleinResultData) {
+				.incorrectArgumentCount = (KleinIncorrectArgumentCountError) {
+					.expected = 1,
+					.actual = arguments->size,
+				},
+			},
+		};
 	}
 
 	String defaultPrompt = "";
 	String* prompt = &defaultPrompt;
 	if (arguments->size == 1) {
-		TRY(getString(arguments->data[0], &prompt), "getting the prompt for a call to input()");
+		TRY(getString(arguments->data[0], &prompt));
 	};
 
 	// Print prompt
@@ -46,25 +54,29 @@ PRIVATE KleinResult input(ValueList* arguments, Value* output) {
 	// Read from stdin
 	String buffer = NULL;
 	size_t length = 0;
-	if (getline(&buffer, &length, stdin) < 0) {
-		RETURN_ERROR("The system failed to read from stdin.");
-	}
+	getline(&buffer, &length, stdin);
 	buffer[strlen(buffer) - 1] = '\0';
 
-	TRY_LET(Value result, stringValue(buffer, &result), "creating the return value from input()");
+	TRY_LET(Value result, stringValue(buffer, &result));
 
 	RETURN_OK(output, result);
 }
 
 PRIVATE KleinResult stringLength(ValueList* arguments, Value* output) {
 	if (arguments->size != 1) {
-		RETURN_ERROR("Incorrect number of arguments passed to builtin function String.length(): Expected 1 but found %lu", arguments->size);
+		return (KleinResult) {
+			.type = KLEIN_ERROR_INCORRECT_ARGUMENT_COUNT,
+			.data = (KleinResultData) {
+				.incorrectArgumentCount = (KleinIncorrectArgumentCountError) {
+					.expected = 1,
+					.actual = arguments->size,
+				},
+			},
+		};
 	}
 
-	String* stringValue;
-	TRY(getString(arguments->data[0], &stringValue), "getting the string value passed to String.length()");
-
-	TRY_LET(Value number, numberValue(strlen(*stringValue), &number), "creating the number value to return from String.length()");
+	TRY_LET(String * stringValue, getString(arguments->data[0], &stringValue));
+	TRY_LET(Value number, numberValue(strlen(*stringValue), &number));
 
 	RETURN_OK(output, number);
 }
@@ -73,12 +85,19 @@ PRIVATE KleinResult listAppend(ValueList* arguments, Value* output) {
 	SUPPRESS_UNUSED(output);
 
 	if (arguments->size != 2) {
-		RETURN_ERROR("Incorrect number of arguments passed to builtin function List.append(): Expected 2 but found %lu", arguments->size);
+		return (KleinResult) {
+			.type = KLEIN_ERROR_INCORRECT_ARGUMENT_COUNT,
+			.data = (KleinResultData) {
+				.incorrectArgumentCount = (KleinIncorrectArgumentCountError) {
+					.expected = 2,
+					.actual = arguments->size,
+				},
+			},
+		};
 	}
 
-	TRY_LET(ValueList * elements, getList(arguments->data[0], &elements), "getting the elements of the list passed to List.append()");
-
-	TRY(appendToValueList(elements, arguments->data[1]), "appending the value in List.append()");
+	TRY_LET(ValueList * elements, getList(arguments->data[0], &elements));
+	appendToValueList(elements, arguments->data[1]);
 
 	return OK;
 }
@@ -107,14 +126,13 @@ KleinResult valueToString(Value value, String* output) {
 	}
 
 	if (isList(value)) {
-		StringList strings;
-		TRY(emptyStringList(&strings), "creating an empty string list when converting a list to a string");
-		TRY(appendToStringList(&strings, "["), "appending to a string list when converting a list to a string");
+		StringList strings = emptyStringList();
+		appendToStringList(&strings, "[");
 		UNWRAP_LET(ValueList * elements, getList(value, &elements));
 		size_t length = 0;
 		FOR_EACHP(Value element, elements) {
-			TRY_LET(String string, valueToString(element, &string), "converting a list element to a string");
-			TRY(appendToStringList(&strings, string), "appending to a string list when converting a list element to a string");
+			TRY_LET(String string, valueToString(element, &string));
+			appendToStringList(&strings, string);
 			length += strlen(string);
 		}
 		END;
@@ -133,14 +151,14 @@ KleinResult valueToString(Value value, String* output) {
 		RETURN_OK(output, "null");
 	}
 
-	RETURN_ERROR("unimplemented toString()");
+	UNREACHABLE;
 }
 
 KleinResult valuesAreEqual(Value left, Value right, Value* output) {
 	if (isNumber(left) && isNumber(right)) {
 		UNWRAP_LET(double* leftNumber, getNumber(left, &leftNumber));
 		UNWRAP_LET(double* rightNumber, getNumber(right, &rightNumber));
-		TRY_LET(Value result, booleanValue(*leftNumber == *rightNumber, &result), "creating the boolean return value to equal()");
+		TRY_LET(Value result, booleanValue(*leftNumber == *rightNumber, &result));
 		RETURN_OK(output, result);
 	}
 
@@ -149,11 +167,19 @@ KleinResult valuesAreEqual(Value left, Value right, Value* output) {
 
 PRIVATE KleinResult numberMod(ValueList* arguments, Value* output) {
 	if (arguments->size != 2) {
-		RETURN_ERROR("Incorrect number of arguments passed to builtin function Number.mod(): Expected 2 but found %lu", arguments->size);
+		return (KleinResult) {
+			.type = KLEIN_ERROR_INCORRECT_ARGUMENT_COUNT,
+			.data = (KleinResultData) {
+				.incorrectArgumentCount = (KleinIncorrectArgumentCountError) {
+					.expected = 2,
+					.actual = arguments->size,
+				},
+			},
+		};
 	}
 
-	TRY_LET(double* leftNumber, getNumber(arguments->data[0], &leftNumber), "getting the first number passed to Number.mod()");
-	TRY_LET(double* rightNumber, getNumber(arguments->data[1], &rightNumber), "getting the second number passed to Number.mod()");
+	TRY_LET(double* leftNumber, getNumber(arguments->data[0], &leftNumber));
+	TRY_LET(double* rightNumber, getNumber(arguments->data[1], &rightNumber));
 
 	double result = (int) *leftNumber % (int) *rightNumber;
 	return numberValue(result, output);
@@ -186,15 +212,22 @@ PRIVATE KleinResult print(ValueList* arguments, Value* output) {
 	SUPPRESS_UNUSED(output);
 
 	if (arguments->size < 1 || arguments->size > 2) {
-		RETURN_ERROR("Incorrect number of arguments passed to builtin function print: Expected 1-2 but found %lu", arguments->size);
+		return (KleinResult) {
+			.type = KLEIN_ERROR_INCORRECT_ARGUMENT_COUNT,
+			.data = (KleinResultData) {
+				.incorrectArgumentCount = (KleinIncorrectArgumentCountError) {
+					.expected = 2,
+					.actual = arguments->size,
+				},
+			},
+		};
 	}
 
 	// Default options
 	Value defaultOptions;
-	ValueFieldList* fields;
-	TRY(emptyHeapValueFieldList(&fields), "creating the field list for the default options to print()");
-	TRY_LET(Value trueValue, booleanValue(true, &trueValue), "creating the default value for the field \"newline\" in print()");
-	TRY(appendToValueFieldList(fields, (ValueField) {.name = "newline", .value = trueValue}), "appending the field \"newline\" to the fields for print()");
+	ValueFieldList* fields = emptyHeapValueFieldList();
+	TRY_LET(Value trueValue, booleanValue(true, &trueValue));
+	appendToValueFieldList(fields, (ValueField) {.name = "newline", .value = trueValue});
 	defaultOptions = (Value) {
 		.fields = fields,
 	};
@@ -206,18 +239,16 @@ PRIVATE KleinResult print(ValueList* arguments, Value* output) {
 		options = defaultOptions;
 	}
 
-	TRY_LET(String stringValue, valueToString(arguments->data[0], &stringValue), "converting the argument passed to print() into a string");
+	TRY_LET(String stringValue, valueToString(arguments->data[0], &stringValue));
 
 	String newline = "\n";
-	TRY_LET(Value * useNewline, getValueField(options, "newline", &useNewline), "getting the field \"newline\" on the options passed to print()");
-	TRY_LET(bool* newlineBoolean, getBoolean(*useNewline, &newlineBoolean), "getting the boolean of the field newline on the options passed to print()");
+	TRY_LET(Value * useNewline, getValueField(options, "newline", &useNewline));
+	TRY_LET(bool* newlineBoolean, getBoolean(*useNewline, &newlineBoolean));
 	if (!*newlineBoolean) {
 		newline = "";
 	}
 
-	if (printf("%s%s", stringValue, newline) < 0) {
-		RETURN_ERROR("The system failed to print to stdout");
-	}
+	printf("%s%s", stringValue, newline);
 
 	return OK;
 }
@@ -243,16 +274,14 @@ KleinResult getBuiltin(String name, BuiltinFunction* output) {
 		RETURN_OK(output, &numberMod);
 	}
 
-	RETURN_ERROR("Attempted to get a built-in function called \"%s\", but no built-in with that name exists.", name);
+	UNREACHABLE;
 }
 
 KleinResult builtinFunctionToValue(BuiltinFunction function, Value* output) {
-	InternalList internals;
-	TRY(emptyInternalList(&internals), "creating an builtin's internals list");
-	TRY(appendToInternalList(&internals, (Internal) {.key = INTERNAL_KEY_BUILTIN_FUNCTION, .value = (void*) function}), "appending to a builtin function value's internals");
+	InternalList internals = emptyInternalList();
+	appendToInternalList(&internals, (Internal) {.key = INTERNAL_KEY_BUILTIN_FUNCTION, .value = (void*) function});
 
-	ValueFieldList* fields;
-	TRY(emptyHeapValueFieldList(&fields), "creating a builtin function value's fields");
+	ValueFieldList* fields = emptyHeapValueFieldList();
 
 	Value result = (Value) {.fields = fields, .internals = internals};
 	RETURN_OK(output, result);

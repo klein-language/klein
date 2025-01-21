@@ -4,7 +4,7 @@
 KleinResult typeOf(Expression expression, Type* output) {
 	switch (expression.type) {
 		default: {
-			RETURN_ERROR("get type unimplemented");
+			UNREACHABLE;
 		}
 	}
 }

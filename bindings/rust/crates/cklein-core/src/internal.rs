@@ -5,17 +5,15 @@
 pub struct Scope {
     _unused: [u8; 0],
 }
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct KleinResult {
-    pub errorMessage: *mut ::std::os::raw::c_char,
-}
-#[allow(clippy::unnecessary_operation, clippy::identity_op)]
-const _: () = {
-    ["Size of KleinResult"][::std::mem::size_of::<KleinResult>() - 8usize];
-    ["Alignment of KleinResult"][::std::mem::align_of::<KleinResult>() - 8usize];
-    ["Offset of field: KleinResult::errorMessage"][::std::mem::offset_of!(KleinResult, errorMessage) - 0usize];
-};
+pub const InternalKey_INTERNAL_KEY_STRING: InternalKey = 0;
+pub const InternalKey_INTERNAL_KEY_NUMBER: InternalKey = 1;
+pub const InternalKey_INTERNAL_KEY_BOOLEAN: InternalKey = 2;
+pub const InternalKey_INTERNAL_KEY_LIST: InternalKey = 3;
+pub const InternalKey_INTERNAL_KEY_NULL: InternalKey = 4;
+pub const InternalKey_INTERNAL_KEY_FUNCTION: InternalKey = 5;
+pub const InternalKey_INTERNAL_KEY_THIS_OBJECT: InternalKey = 6;
+pub const InternalKey_INTERNAL_KEY_BUILTIN_FUNCTION: InternalKey = 7;
+pub type InternalKey = ::std::os::raw::c_uint;
 pub const TokenType_TOKEN_TYPE_KEYWORD_AND: TokenType = 0;
 pub const TokenType_TOKEN_TYPE_KEYWORD_DO: TokenType = 1;
 pub const TokenType_TOKEN_TYPE_KEYWORD_ELSE: TokenType = 2;
@@ -56,7 +54,111 @@ pub const TokenType_TOKEN_TYPE_NUMBER: TokenType = 36;
 pub const TokenType_TOKEN_TYPE_IDENTIFIER: TokenType = 37;
 pub const TokenType_TOKEN_TYPE_WHITESPACE: TokenType = 38;
 pub const TokenType_TOKEN_TYPE_COMMENT: TokenType = 39;
+pub const TokenType_TOKEN_TYPE_EOF: TokenType = 40;
 pub type TokenType = ::std::os::raw::c_uint;
+pub const KleinResultType_KLEIN_OK: KleinResultType = 0;
+pub const KleinResultType_KLEIN_ERROR_INTERNAL: KleinResultType = 1;
+pub const KleinResultType_KLEIN_ERROR_UNRECOGNIZED_TOKEN: KleinResultType = 2;
+pub const KleinResultType_KLEIN_ERROR_UNEXPECTED_TOKEN: KleinResultType = 3;
+pub const KleinResultType_KLEIN_ERROR_PEEK_EMPTY_TOKEN_STREAM: KleinResultType = 4;
+pub const KleinResultType_KLEIN_ERROR_MISSING_FIELD: KleinResultType = 5;
+pub const KleinResultType_KLEIN_ERROR_ASSIGN_TO_NON_IDENTIFIER: KleinResultType = 6;
+pub const KleinResultType_KLEIN_ERROR_INCORRECT_ARGUMENT_COUNT: KleinResultType = 7;
+pub const KleinResultType_KLEIN_ERROR_INVALID_INDEX: KleinResultType = 8;
+pub const KleinResultType_KLEIN_ERROR_DUPLICATE_VARIABLE_DECLARATION: KleinResultType = 9;
+pub const KleinResultType_KLEIN_ERROR_REFERENCE_UNDEFINED_VARIABLE: KleinResultType = 10;
+pub type KleinResultType = ::std::os::raw::c_uint;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct KleinValueMissingInternalError {
+    pub value: *mut Value,
+    pub internal: *mut InternalKey,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of KleinValueMissingInternalError"][::std::mem::size_of::<KleinValueMissingInternalError>() - 16usize];
+    ["Alignment of KleinValueMissingInternalError"][::std::mem::align_of::<KleinValueMissingInternalError>() - 8usize];
+    ["Offset of field: KleinValueMissingInternalError::value"][::std::mem::offset_of!(KleinValueMissingInternalError, value) - 0usize];
+    ["Offset of field: KleinValueMissingInternalError::internal"][::std::mem::offset_of!(KleinValueMissingInternalError, internal) - 8usize];
+};
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct KleinValueMissingFieldError {
+    pub value: *mut Value,
+    pub name: *mut ::std::os::raw::c_char,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of KleinValueMissingFieldError"][::std::mem::size_of::<KleinValueMissingFieldError>() - 16usize];
+    ["Alignment of KleinValueMissingFieldError"][::std::mem::align_of::<KleinValueMissingFieldError>() - 8usize];
+    ["Offset of field: KleinValueMissingFieldError::value"][::std::mem::offset_of!(KleinValueMissingFieldError, value) - 0usize];
+    ["Offset of field: KleinValueMissingFieldError::name"][::std::mem::offset_of!(KleinValueMissingFieldError, name) - 8usize];
+};
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct KleinUnexpectedTokenError {
+    pub expected: TokenType,
+    pub actual: TokenType,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of KleinUnexpectedTokenError"][::std::mem::size_of::<KleinUnexpectedTokenError>() - 8usize];
+    ["Alignment of KleinUnexpectedTokenError"][::std::mem::align_of::<KleinUnexpectedTokenError>() - 4usize];
+    ["Offset of field: KleinUnexpectedTokenError::expected"][::std::mem::offset_of!(KleinUnexpectedTokenError, expected) - 0usize];
+    ["Offset of field: KleinUnexpectedTokenError::actual"][::std::mem::offset_of!(KleinUnexpectedTokenError, actual) - 4usize];
+};
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct KleinIncorrectArgumentCountError {
+    pub expected: ::std::os::raw::c_ulong,
+    pub actual: ::std::os::raw::c_ulong,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of KleinIncorrectArgumentCountError"][::std::mem::size_of::<KleinIncorrectArgumentCountError>() - 16usize];
+    ["Alignment of KleinIncorrectArgumentCountError"][::std::mem::align_of::<KleinIncorrectArgumentCountError>() - 8usize];
+    ["Offset of field: KleinIncorrectArgumentCountError::expected"][::std::mem::offset_of!(KleinIncorrectArgumentCountError, expected) - 0usize];
+    ["Offset of field: KleinIncorrectArgumentCountError::actual"][::std::mem::offset_of!(KleinIncorrectArgumentCountError, actual) - 8usize];
+};
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union KleinResultData {
+    pub unrecognizedToken: *mut ::std::os::raw::c_char,
+    pub unexpectedToken: KleinUnexpectedTokenError,
+    pub missingInternal: KleinValueMissingInternalError,
+    pub missingField: KleinValueMissingFieldError,
+    pub assignToNonIdentifier: *mut Expression,
+    pub incorrectArgumentCount: KleinIncorrectArgumentCountError,
+    pub duplicateVariableDeclaration: *mut ::std::os::raw::c_char,
+    pub referenceUndefinedVariable: *mut ::std::os::raw::c_char,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of KleinResultData"][::std::mem::size_of::<KleinResultData>() - 16usize];
+    ["Alignment of KleinResultData"][::std::mem::align_of::<KleinResultData>() - 8usize];
+    ["Offset of field: KleinResultData::unrecognizedToken"][::std::mem::offset_of!(KleinResultData, unrecognizedToken) - 0usize];
+    ["Offset of field: KleinResultData::unexpectedToken"][::std::mem::offset_of!(KleinResultData, unexpectedToken) - 0usize];
+    ["Offset of field: KleinResultData::missingInternal"][::std::mem::offset_of!(KleinResultData, missingInternal) - 0usize];
+    ["Offset of field: KleinResultData::missingField"][::std::mem::offset_of!(KleinResultData, missingField) - 0usize];
+    ["Offset of field: KleinResultData::assignToNonIdentifier"][::std::mem::offset_of!(KleinResultData, assignToNonIdentifier) - 0usize];
+    ["Offset of field: KleinResultData::incorrectArgumentCount"][::std::mem::offset_of!(KleinResultData, incorrectArgumentCount) - 0usize];
+    ["Offset of field: KleinResultData::duplicateVariableDeclaration"]
+        [::std::mem::offset_of!(KleinResultData, duplicateVariableDeclaration) - 0usize];
+    ["Offset of field: KleinResultData::referenceUndefinedVariable"][::std::mem::offset_of!(KleinResultData, referenceUndefinedVariable) - 0usize];
+};
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct KleinResult {
+    pub type_: KleinResultType,
+    pub data: KleinResultData,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of KleinResult"][::std::mem::size_of::<KleinResult>() - 24usize];
+    ["Alignment of KleinResult"][::std::mem::align_of::<KleinResult>() - 8usize];
+    ["Offset of field: KleinResult::type_"][::std::mem::offset_of!(KleinResult, type_) - 0usize];
+    ["Offset of field: KleinResult::data"][::std::mem::offset_of!(KleinResult, data) - 8usize];
+};
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct Token {
@@ -70,42 +172,6 @@ const _: () = {
     ["Offset of field: Token::type_"][::std::mem::offset_of!(Token, type_) - 0usize];
     ["Offset of field: Token::value"][::std::mem::offset_of!(Token, value) - 8usize];
 };
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct TokenList {
-    pub size: ::std::os::raw::c_ulong,
-    pub capacity: ::std::os::raw::c_ulong,
-    pub data: *mut Token,
-}
-#[allow(clippy::unnecessary_operation, clippy::identity_op)]
-const _: () = {
-    ["Size of TokenList"][::std::mem::size_of::<TokenList>() - 24usize];
-    ["Alignment of TokenList"][::std::mem::align_of::<TokenList>() - 8usize];
-    ["Offset of field: TokenList::size"][::std::mem::offset_of!(TokenList, size) - 0usize];
-    ["Offset of field: TokenList::capacity"][::std::mem::offset_of!(TokenList, capacity) - 8usize];
-    ["Offset of field: TokenList::data"][::std::mem::offset_of!(TokenList, data) - 16usize];
-};
-unsafe extern "C" {
-    pub fn emptyTokenList(output: *mut TokenList) -> KleinResult;
-}
-unsafe extern "C" {
-    pub fn emptyHeapTokenList(output: *mut *mut TokenList) -> KleinResult;
-}
-unsafe extern "C" {
-    pub fn appendToTokenList(list: *mut TokenList, value: Token) -> KleinResult;
-}
-unsafe extern "C" {
-    pub fn prependToTokenList(list: *mut TokenList, value: Token) -> KleinResult;
-}
-unsafe extern "C" {
-    pub fn isTokenListEmpty(list: TokenList) -> ::std::os::raw::c_int;
-}
-unsafe extern "C" {
-    pub fn popTokenList(list: *mut TokenList) -> KleinResult;
-}
-unsafe extern "C" {
-    pub fn getFromTokenListUnchecked(list: TokenList, index: ::std::os::raw::c_ulong) -> Token;
-}
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub union TypeLiteralData {
@@ -234,22 +300,22 @@ const _: () = {
     ["Offset of field: ParameterList::data"][::std::mem::offset_of!(ParameterList, data) - 16usize];
 };
 unsafe extern "C" {
-    pub fn emptyParameterList(output: *mut ParameterList) -> KleinResult;
+    pub fn emptyParameterList() -> ParameterList;
 }
 unsafe extern "C" {
-    pub fn emptyHeapParameterList(output: *mut *mut ParameterList) -> KleinResult;
+    pub fn emptyHeapParameterList() -> *mut ParameterList;
 }
 unsafe extern "C" {
-    pub fn appendToParameterList(list: *mut ParameterList, value: Parameter) -> KleinResult;
+    pub fn appendToParameterList(list: *mut ParameterList, value: Parameter);
 }
 unsafe extern "C" {
-    pub fn prependToParameterList(list: *mut ParameterList, value: Parameter) -> KleinResult;
+    pub fn prependToParameterList(list: *mut ParameterList, value: Parameter);
 }
 unsafe extern "C" {
     pub fn isParameterListEmpty(list: ParameterList) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
-    pub fn popParameterList(list: *mut ParameterList) -> KleinResult;
+    pub fn popParameterList(list: *mut ParameterList);
 }
 unsafe extern "C" {
     pub fn getFromParameterListUnchecked(list: ParameterList, index: ::std::os::raw::c_ulong) -> Parameter;
@@ -357,6 +423,21 @@ const _: () = {
     ["Offset of field: Expression::data"][::std::mem::offset_of!(Expression, data) - 8usize];
 };
 #[repr(C)]
+#[derive(Copy, Clone)]
+pub struct BinaryExpression {
+    pub left: Expression,
+    pub operation: BinaryOperation,
+    pub right: Expression,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of BinaryExpression"][::std::mem::size_of::<BinaryExpression>() - 152usize];
+    ["Alignment of BinaryExpression"][::std::mem::align_of::<BinaryExpression>() - 8usize];
+    ["Offset of field: BinaryExpression::left"][::std::mem::offset_of!(BinaryExpression, left) - 0usize];
+    ["Offset of field: BinaryExpression::operation"][::std::mem::offset_of!(BinaryExpression, operation) - 72usize];
+    ["Offset of field: BinaryExpression::right"][::std::mem::offset_of!(BinaryExpression, right) - 80usize];
+};
+#[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct ExpressionList {
     pub size: ::std::os::raw::c_ulong,
@@ -372,41 +453,26 @@ const _: () = {
     ["Offset of field: ExpressionList::data"][::std::mem::offset_of!(ExpressionList, data) - 16usize];
 };
 unsafe extern "C" {
-    pub fn emptyExpressionList(output: *mut ExpressionList) -> KleinResult;
+    pub fn emptyExpressionList() -> ExpressionList;
 }
 unsafe extern "C" {
-    pub fn emptyHeapExpressionList(output: *mut *mut ExpressionList) -> KleinResult;
+    pub fn emptyHeapExpressionList() -> *mut ExpressionList;
 }
 unsafe extern "C" {
-    pub fn appendToExpressionList(list: *mut ExpressionList, value: Expression) -> KleinResult;
+    pub fn appendToExpressionList(list: *mut ExpressionList, value: Expression);
 }
 unsafe extern "C" {
-    pub fn prependToExpressionList(list: *mut ExpressionList, value: Expression) -> KleinResult;
+    pub fn prependToExpressionList(list: *mut ExpressionList, value: Expression);
 }
 unsafe extern "C" {
     pub fn isExpressionListEmpty(list: ExpressionList) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
-    pub fn popExpressionList(list: *mut ExpressionList) -> KleinResult;
+    pub fn popExpressionList(list: *mut ExpressionList);
 }
 unsafe extern "C" {
     pub fn getFromExpressionListUnchecked(list: ExpressionList, index: ::std::os::raw::c_ulong) -> Expression;
 }
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct BinaryExpression {
-    pub left: Expression,
-    pub operation: BinaryOperation,
-    pub right: Expression,
-}
-#[allow(clippy::unnecessary_operation, clippy::identity_op)]
-const _: () = {
-    ["Size of BinaryExpression"][::std::mem::size_of::<BinaryExpression>() - 152usize];
-    ["Alignment of BinaryExpression"][::std::mem::align_of::<BinaryExpression>() - 8usize];
-    ["Offset of field: BinaryExpression::left"][::std::mem::offset_of!(BinaryExpression, left) - 0usize];
-    ["Offset of field: BinaryExpression::operation"][::std::mem::offset_of!(BinaryExpression, operation) - 72usize];
-    ["Offset of field: BinaryExpression::right"][::std::mem::offset_of!(BinaryExpression, right) - 80usize];
-};
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub union UnaryOperationData {
@@ -475,22 +541,22 @@ const _: () = {
     ["Offset of field: FieldList::data"][::std::mem::offset_of!(FieldList, data) - 16usize];
 };
 unsafe extern "C" {
-    pub fn emptyFieldList(output: *mut FieldList) -> KleinResult;
+    pub fn emptyFieldList() -> FieldList;
 }
 unsafe extern "C" {
-    pub fn emptyHeapFieldList(output: *mut *mut FieldList) -> KleinResult;
+    pub fn emptyHeapFieldList() -> *mut FieldList;
 }
 unsafe extern "C" {
-    pub fn appendToFieldList(list: *mut FieldList, value: Field) -> KleinResult;
+    pub fn appendToFieldList(list: *mut FieldList, value: Field);
 }
 unsafe extern "C" {
-    pub fn prependToFieldList(list: *mut FieldList, value: Field) -> KleinResult;
+    pub fn prependToFieldList(list: *mut FieldList, value: Field);
 }
 unsafe extern "C" {
     pub fn isFieldListEmpty(list: FieldList) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
-    pub fn popFieldList(list: *mut FieldList) -> KleinResult;
+    pub fn popFieldList(list: *mut FieldList);
 }
 unsafe extern "C" {
     pub fn getFromFieldListUnchecked(list: FieldList, index: ::std::os::raw::c_ulong) -> Field;
@@ -526,42 +592,6 @@ const _: () = {
     ["Offset of field: Declaration::value"][::std::mem::offset_of!(Declaration, value) - 16usize];
 };
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct DeclarationList {
-    pub size: ::std::os::raw::c_ulong,
-    pub capacity: ::std::os::raw::c_ulong,
-    pub data: *mut Declaration,
-}
-#[allow(clippy::unnecessary_operation, clippy::identity_op)]
-const _: () = {
-    ["Size of DeclarationList"][::std::mem::size_of::<DeclarationList>() - 24usize];
-    ["Alignment of DeclarationList"][::std::mem::align_of::<DeclarationList>() - 8usize];
-    ["Offset of field: DeclarationList::size"][::std::mem::offset_of!(DeclarationList, size) - 0usize];
-    ["Offset of field: DeclarationList::capacity"][::std::mem::offset_of!(DeclarationList, capacity) - 8usize];
-    ["Offset of field: DeclarationList::data"][::std::mem::offset_of!(DeclarationList, data) - 16usize];
-};
-unsafe extern "C" {
-    pub fn emptyDeclarationList(output: *mut DeclarationList) -> KleinResult;
-}
-unsafe extern "C" {
-    pub fn emptyHeapDeclarationList(output: *mut *mut DeclarationList) -> KleinResult;
-}
-unsafe extern "C" {
-    pub fn appendToDeclarationList(list: *mut DeclarationList, value: Declaration) -> KleinResult;
-}
-unsafe extern "C" {
-    pub fn prependToDeclarationList(list: *mut DeclarationList, value: Declaration) -> KleinResult;
-}
-unsafe extern "C" {
-    pub fn isDeclarationListEmpty(list: DeclarationList) -> ::std::os::raw::c_int;
-}
-unsafe extern "C" {
-    pub fn popDeclarationList(list: *mut DeclarationList) -> KleinResult;
-}
-unsafe extern "C" {
-    pub fn getFromDeclarationListUnchecked(list: DeclarationList, index: ::std::os::raw::c_ulong) -> Declaration;
-}
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub union StatementData {
     pub declaration: Declaration,
@@ -589,42 +619,6 @@ const _: () = {
     ["Offset of field: Statement::data"][::std::mem::offset_of!(Statement, data) - 0usize];
     ["Offset of field: Statement::type_"][::std::mem::offset_of!(Statement, type_) - 88usize];
 };
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct StatementList {
-    pub size: ::std::os::raw::c_ulong,
-    pub capacity: ::std::os::raw::c_ulong,
-    pub data: *mut Statement,
-}
-#[allow(clippy::unnecessary_operation, clippy::identity_op)]
-const _: () = {
-    ["Size of StatementList"][::std::mem::size_of::<StatementList>() - 24usize];
-    ["Alignment of StatementList"][::std::mem::align_of::<StatementList>() - 8usize];
-    ["Offset of field: StatementList::size"][::std::mem::offset_of!(StatementList, size) - 0usize];
-    ["Offset of field: StatementList::capacity"][::std::mem::offset_of!(StatementList, capacity) - 8usize];
-    ["Offset of field: StatementList::data"][::std::mem::offset_of!(StatementList, data) - 16usize];
-};
-unsafe extern "C" {
-    pub fn emptyStatementList(output: *mut StatementList) -> KleinResult;
-}
-unsafe extern "C" {
-    pub fn emptyHeapStatementList(output: *mut *mut StatementList) -> KleinResult;
-}
-unsafe extern "C" {
-    pub fn appendToStatementList(list: *mut StatementList, value: Statement) -> KleinResult;
-}
-unsafe extern "C" {
-    pub fn prependToStatementList(list: *mut StatementList, value: Statement) -> KleinResult;
-}
-unsafe extern "C" {
-    pub fn isStatementListEmpty(list: StatementList) -> ::std::os::raw::c_int;
-}
-unsafe extern "C" {
-    pub fn popStatementList(list: *mut StatementList) -> KleinResult;
-}
-unsafe extern "C" {
-    pub fn getFromStatementListUnchecked(list: StatementList, index: ::std::os::raw::c_ulong) -> Statement;
-}
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct BinaryOperator {
@@ -683,39 +677,39 @@ const _: () = {
 };
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct IfExpressionList {
+pub struct StatementList {
     pub size: ::std::os::raw::c_ulong,
     pub capacity: ::std::os::raw::c_ulong,
-    pub data: *mut IfExpression,
+    pub data: *mut Statement,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of IfExpressionList"][::std::mem::size_of::<IfExpressionList>() - 24usize];
-    ["Alignment of IfExpressionList"][::std::mem::align_of::<IfExpressionList>() - 8usize];
-    ["Offset of field: IfExpressionList::size"][::std::mem::offset_of!(IfExpressionList, size) - 0usize];
-    ["Offset of field: IfExpressionList::capacity"][::std::mem::offset_of!(IfExpressionList, capacity) - 8usize];
-    ["Offset of field: IfExpressionList::data"][::std::mem::offset_of!(IfExpressionList, data) - 16usize];
+    ["Size of StatementList"][::std::mem::size_of::<StatementList>() - 24usize];
+    ["Alignment of StatementList"][::std::mem::align_of::<StatementList>() - 8usize];
+    ["Offset of field: StatementList::size"][::std::mem::offset_of!(StatementList, size) - 0usize];
+    ["Offset of field: StatementList::capacity"][::std::mem::offset_of!(StatementList, capacity) - 8usize];
+    ["Offset of field: StatementList::data"][::std::mem::offset_of!(StatementList, data) - 16usize];
 };
 unsafe extern "C" {
-    pub fn emptyIfExpressionList(output: *mut IfExpressionList) -> KleinResult;
+    pub fn emptyStatementList() -> StatementList;
 }
 unsafe extern "C" {
-    pub fn emptyHeapIfExpressionList(output: *mut *mut IfExpressionList) -> KleinResult;
+    pub fn emptyHeapStatementList() -> *mut StatementList;
 }
 unsafe extern "C" {
-    pub fn appendToIfExpressionList(list: *mut IfExpressionList, value: IfExpression) -> KleinResult;
+    pub fn appendToStatementList(list: *mut StatementList, value: Statement);
 }
 unsafe extern "C" {
-    pub fn prependToIfExpressionList(list: *mut IfExpressionList, value: IfExpression) -> KleinResult;
+    pub fn prependToStatementList(list: *mut StatementList, value: Statement);
 }
 unsafe extern "C" {
-    pub fn isIfExpressionListEmpty(list: IfExpressionList) -> ::std::os::raw::c_int;
+    pub fn isStatementListEmpty(list: StatementList) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
-    pub fn popIfExpressionList(list: *mut IfExpressionList) -> KleinResult;
+    pub fn popStatementList(list: *mut StatementList);
 }
 unsafe extern "C" {
-    pub fn getFromIfExpressionListUnchecked(list: IfExpressionList, index: ::std::os::raw::c_ulong) -> IfExpression;
+    pub fn getFromStatementListUnchecked(list: StatementList, index: ::std::os::raw::c_ulong) -> Statement;
 }
 #[doc = " A program's abstract syntax tree."]
 #[repr(C)]
@@ -730,28 +724,6 @@ const _: () = {
     ["Alignment of Program"][::std::mem::align_of::<Program>() - 8usize];
     ["Offset of field: Program::statements"][::std::mem::offset_of!(Program, statements) - 0usize];
 };
-unsafe extern "C" {
-    #[doc = " Tokenizes the given string of Klein source code into a list of tokens.\n This is the first step of interpreting Klein code.\n\n # Parameters\n\n - `sourceCode` - The original, Klein source code. It may contain\n   syntax and semantic errors and this function will still return `OK`\n   as long as each individual token in the code is a valid Klein token.\n   It mustn't be `NULL`.\n\n - `output` - Where to store the resulting `TokenList`. It must point to\n   some memory (be it stack or heap) that already has enough space to hold\n   a `TokenList`; i.e. it could be the address of stack token or the result of\n   `malloc(sizeof(TokenList))`, but it can't be `NULL`, or an error will be returned.\n   The outputted tokens have copied strings from the original source code (because\n   they need to be null-terminated and the original source code is contiguous),\n   so it's not dependent on `sourceCode` being valid; i.e., if the string stored at\n   `sourceCode` is freed, `output` will still be valid.\n\n # Errors\n\n If memory for the token list fails to allocate, an error is returned.\n If the source code contains unrecognized tokens, an error is returned.\n If the given `sourceCode` or `output` is `NULL`, an error is returned."]
-    pub fn tokenizeKlein(sourceCode: *mut ::std::os::raw::c_char, output: *mut TokenList) -> KleinResult;
-}
-unsafe extern "C" {
-    pub fn parseKlein(code: *mut ::std::os::raw::c_char, output: *mut Program) -> KleinResult;
-}
-unsafe extern "C" {
-    pub fn parseKleinExpression(code: *mut ::std::os::raw::c_char, output: *mut Expression) -> KleinResult;
-}
-unsafe extern "C" {
-    pub fn runKlein(code: *mut ::std::os::raw::c_char) -> KleinResult;
-}
-pub const InternalKey_INTERNAL_KEY_STRING: InternalKey = 0;
-pub const InternalKey_INTERNAL_KEY_NUMBER: InternalKey = 1;
-pub const InternalKey_INTERNAL_KEY_BOOLEAN: InternalKey = 2;
-pub const InternalKey_INTERNAL_KEY_LIST: InternalKey = 3;
-pub const InternalKey_INTERNAL_KEY_NULL: InternalKey = 4;
-pub const InternalKey_INTERNAL_KEY_FUNCTION: InternalKey = 5;
-pub const InternalKey_INTERNAL_KEY_THIS_OBJECT: InternalKey = 6;
-pub const InternalKey_INTERNAL_KEY_BUILTIN_FUNCTION: InternalKey = 7;
-pub type InternalKey = ::std::os::raw::c_uint;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct Internal {
@@ -781,22 +753,22 @@ const _: () = {
     ["Offset of field: InternalList::data"][::std::mem::offset_of!(InternalList, data) - 16usize];
 };
 unsafe extern "C" {
-    pub fn emptyInternalList(output: *mut InternalList) -> KleinResult;
+    pub fn emptyInternalList() -> InternalList;
 }
 unsafe extern "C" {
-    pub fn emptyHeapInternalList(output: *mut *mut InternalList) -> KleinResult;
+    pub fn emptyHeapInternalList() -> *mut InternalList;
 }
 unsafe extern "C" {
-    pub fn appendToInternalList(list: *mut InternalList, value: Internal) -> KleinResult;
+    pub fn appendToInternalList(list: *mut InternalList, value: Internal);
 }
 unsafe extern "C" {
-    pub fn prependToInternalList(list: *mut InternalList, value: Internal) -> KleinResult;
+    pub fn prependToInternalList(list: *mut InternalList, value: Internal);
 }
 unsafe extern "C" {
     pub fn isInternalListEmpty(list: InternalList) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
-    pub fn popInternalList(list: *mut InternalList) -> KleinResult;
+    pub fn popInternalList(list: *mut InternalList);
 }
 unsafe extern "C" {
     pub fn getFromInternalListUnchecked(list: InternalList, index: ::std::os::raw::c_ulong) -> Internal;
@@ -814,42 +786,6 @@ const _: () = {
     ["Offset of field: Value::fields"][::std::mem::offset_of!(Value, fields) - 0usize];
     ["Offset of field: Value::internals"][::std::mem::offset_of!(Value, internals) - 8usize];
 };
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct ValueList {
-    pub size: ::std::os::raw::c_ulong,
-    pub capacity: ::std::os::raw::c_ulong,
-    pub data: *mut Value,
-}
-#[allow(clippy::unnecessary_operation, clippy::identity_op)]
-const _: () = {
-    ["Size of ValueList"][::std::mem::size_of::<ValueList>() - 24usize];
-    ["Alignment of ValueList"][::std::mem::align_of::<ValueList>() - 8usize];
-    ["Offset of field: ValueList::size"][::std::mem::offset_of!(ValueList, size) - 0usize];
-    ["Offset of field: ValueList::capacity"][::std::mem::offset_of!(ValueList, capacity) - 8usize];
-    ["Offset of field: ValueList::data"][::std::mem::offset_of!(ValueList, data) - 16usize];
-};
-unsafe extern "C" {
-    pub fn emptyValueList(output: *mut ValueList) -> KleinResult;
-}
-unsafe extern "C" {
-    pub fn emptyHeapValueList(output: *mut *mut ValueList) -> KleinResult;
-}
-unsafe extern "C" {
-    pub fn appendToValueList(list: *mut ValueList, value: Value) -> KleinResult;
-}
-unsafe extern "C" {
-    pub fn prependToValueList(list: *mut ValueList, value: Value) -> KleinResult;
-}
-unsafe extern "C" {
-    pub fn isValueListEmpty(list: ValueList) -> ::std::os::raw::c_int;
-}
-unsafe extern "C" {
-    pub fn popValueList(list: *mut ValueList) -> KleinResult;
-}
-unsafe extern "C" {
-    pub fn getFromValueListUnchecked(list: ValueList, index: ::std::os::raw::c_ulong) -> Value;
-}
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct ValueField {
@@ -879,23 +815,179 @@ const _: () = {
     ["Offset of field: ValueFieldList::data"][::std::mem::offset_of!(ValueFieldList, data) - 16usize];
 };
 unsafe extern "C" {
-    pub fn emptyValueFieldList(output: *mut ValueFieldList) -> KleinResult;
+    pub fn emptyValueFieldList() -> ValueFieldList;
 }
 unsafe extern "C" {
-    pub fn emptyHeapValueFieldList(output: *mut *mut ValueFieldList) -> KleinResult;
+    pub fn emptyHeapValueFieldList() -> *mut ValueFieldList;
 }
 unsafe extern "C" {
-    pub fn appendToValueFieldList(list: *mut ValueFieldList, value: ValueField) -> KleinResult;
+    pub fn appendToValueFieldList(list: *mut ValueFieldList, value: ValueField);
 }
 unsafe extern "C" {
-    pub fn prependToValueFieldList(list: *mut ValueFieldList, value: ValueField) -> KleinResult;
+    pub fn prependToValueFieldList(list: *mut ValueFieldList, value: ValueField);
 }
 unsafe extern "C" {
     pub fn isValueFieldListEmpty(list: ValueFieldList) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
-    pub fn popValueFieldList(list: *mut ValueFieldList) -> KleinResult;
+    pub fn popValueFieldList(list: *mut ValueFieldList);
 }
 unsafe extern "C" {
     pub fn getFromValueFieldListUnchecked(list: ValueFieldList, index: ::std::os::raw::c_ulong) -> ValueField;
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ValueList {
+    pub size: ::std::os::raw::c_ulong,
+    pub capacity: ::std::os::raw::c_ulong,
+    pub data: *mut Value,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of ValueList"][::std::mem::size_of::<ValueList>() - 24usize];
+    ["Alignment of ValueList"][::std::mem::align_of::<ValueList>() - 8usize];
+    ["Offset of field: ValueList::size"][::std::mem::offset_of!(ValueList, size) - 0usize];
+    ["Offset of field: ValueList::capacity"][::std::mem::offset_of!(ValueList, capacity) - 8usize];
+    ["Offset of field: ValueList::data"][::std::mem::offset_of!(ValueList, data) - 16usize];
+};
+unsafe extern "C" {
+    pub fn emptyValueList() -> ValueList;
+}
+unsafe extern "C" {
+    pub fn emptyHeapValueList() -> *mut ValueList;
+}
+unsafe extern "C" {
+    pub fn appendToValueList(list: *mut ValueList, value: Value);
+}
+unsafe extern "C" {
+    pub fn prependToValueList(list: *mut ValueList, value: Value);
+}
+unsafe extern "C" {
+    pub fn isValueListEmpty(list: ValueList) -> ::std::os::raw::c_int;
+}
+unsafe extern "C" {
+    pub fn popValueList(list: *mut ValueList);
+}
+unsafe extern "C" {
+    pub fn getFromValueListUnchecked(list: ValueList, index: ::std::os::raw::c_ulong) -> Value;
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct TokenList {
+    pub size: ::std::os::raw::c_ulong,
+    pub capacity: ::std::os::raw::c_ulong,
+    pub data: *mut Token,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of TokenList"][::std::mem::size_of::<TokenList>() - 24usize];
+    ["Alignment of TokenList"][::std::mem::align_of::<TokenList>() - 8usize];
+    ["Offset of field: TokenList::size"][::std::mem::offset_of!(TokenList, size) - 0usize];
+    ["Offset of field: TokenList::capacity"][::std::mem::offset_of!(TokenList, capacity) - 8usize];
+    ["Offset of field: TokenList::data"][::std::mem::offset_of!(TokenList, data) - 16usize];
+};
+unsafe extern "C" {
+    pub fn emptyTokenList() -> TokenList;
+}
+unsafe extern "C" {
+    pub fn emptyHeapTokenList() -> *mut TokenList;
+}
+unsafe extern "C" {
+    pub fn appendToTokenList(list: *mut TokenList, value: Token);
+}
+unsafe extern "C" {
+    pub fn prependToTokenList(list: *mut TokenList, value: Token);
+}
+unsafe extern "C" {
+    pub fn isTokenListEmpty(list: TokenList) -> ::std::os::raw::c_int;
+}
+unsafe extern "C" {
+    pub fn popTokenList(list: *mut TokenList);
+}
+unsafe extern "C" {
+    pub fn getFromTokenListUnchecked(list: TokenList, index: ::std::os::raw::c_ulong) -> Token;
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct DeclarationList {
+    pub size: ::std::os::raw::c_ulong,
+    pub capacity: ::std::os::raw::c_ulong,
+    pub data: *mut Declaration,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of DeclarationList"][::std::mem::size_of::<DeclarationList>() - 24usize];
+    ["Alignment of DeclarationList"][::std::mem::align_of::<DeclarationList>() - 8usize];
+    ["Offset of field: DeclarationList::size"][::std::mem::offset_of!(DeclarationList, size) - 0usize];
+    ["Offset of field: DeclarationList::capacity"][::std::mem::offset_of!(DeclarationList, capacity) - 8usize];
+    ["Offset of field: DeclarationList::data"][::std::mem::offset_of!(DeclarationList, data) - 16usize];
+};
+unsafe extern "C" {
+    pub fn emptyDeclarationList() -> DeclarationList;
+}
+unsafe extern "C" {
+    pub fn emptyHeapDeclarationList() -> *mut DeclarationList;
+}
+unsafe extern "C" {
+    pub fn appendToDeclarationList(list: *mut DeclarationList, value: Declaration);
+}
+unsafe extern "C" {
+    pub fn prependToDeclarationList(list: *mut DeclarationList, value: Declaration);
+}
+unsafe extern "C" {
+    pub fn isDeclarationListEmpty(list: DeclarationList) -> ::std::os::raw::c_int;
+}
+unsafe extern "C" {
+    pub fn popDeclarationList(list: *mut DeclarationList);
+}
+unsafe extern "C" {
+    pub fn getFromDeclarationListUnchecked(list: DeclarationList, index: ::std::os::raw::c_ulong) -> Declaration;
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IfExpressionList {
+    pub size: ::std::os::raw::c_ulong,
+    pub capacity: ::std::os::raw::c_ulong,
+    pub data: *mut IfExpression,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of IfExpressionList"][::std::mem::size_of::<IfExpressionList>() - 24usize];
+    ["Alignment of IfExpressionList"][::std::mem::align_of::<IfExpressionList>() - 8usize];
+    ["Offset of field: IfExpressionList::size"][::std::mem::offset_of!(IfExpressionList, size) - 0usize];
+    ["Offset of field: IfExpressionList::capacity"][::std::mem::offset_of!(IfExpressionList, capacity) - 8usize];
+    ["Offset of field: IfExpressionList::data"][::std::mem::offset_of!(IfExpressionList, data) - 16usize];
+};
+unsafe extern "C" {
+    pub fn emptyIfExpressionList() -> IfExpressionList;
+}
+unsafe extern "C" {
+    pub fn emptyHeapIfExpressionList() -> *mut IfExpressionList;
+}
+unsafe extern "C" {
+    pub fn appendToIfExpressionList(list: *mut IfExpressionList, value: IfExpression);
+}
+unsafe extern "C" {
+    pub fn prependToIfExpressionList(list: *mut IfExpressionList, value: IfExpression);
+}
+unsafe extern "C" {
+    pub fn isIfExpressionListEmpty(list: IfExpressionList) -> ::std::os::raw::c_int;
+}
+unsafe extern "C" {
+    pub fn popIfExpressionList(list: *mut IfExpressionList);
+}
+unsafe extern "C" {
+    pub fn getFromIfExpressionListUnchecked(list: IfExpressionList, index: ::std::os::raw::c_ulong) -> IfExpression;
+}
+unsafe extern "C" {
+    pub fn tokenizeKlein(sourceCode: *mut ::std::os::raw::c_char, output: *mut TokenList) -> KleinResult;
+}
+unsafe extern "C" {
+    pub fn parseKlein(code: *mut ::std::os::raw::c_char, output: *mut Program) -> KleinResult;
+}
+unsafe extern "C" {
+    pub fn parseKleinExpression(code: *mut ::std::os::raw::c_char, output: *mut Expression) -> KleinResult;
+}
+unsafe extern "C" {
+    pub fn runKlein(code: *mut ::std::os::raw::c_char) -> KleinResult;
 }

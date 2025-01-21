@@ -8,46 +8,38 @@
 typedef char Char;
 
 #define IMPLEMENT_KLEIN_LIST(type)                                                   \
-	KleinResult empty##type##List(type##List* output) {                              \
+	type##List empty##type##List() {                                                 \
+		return (type##List) {                                                        \
+			.size = 0,                                                               \
+			.capacity = 8,                                                           \
+			.data = malloc(sizeof(type) * 8),                                        \
+		};                                                                           \
+	}                                                                                \
+                                                                                     \
+	type##List* emptyHeap##type##List() {                                            \
+		type##List* output = malloc(sizeof(type##List));                             \
 		*output = (type##List) {                                                     \
 			.size = 0,                                                               \
 			.capacity = 8,                                                           \
 			.data = malloc(sizeof(type) * 8),                                        \
 		};                                                                           \
-		ASSERT_NONNULL(output->data);                                                \
-		return OK;                                                                   \
+		return output;                                                               \
 	}                                                                                \
                                                                                      \
-	KleinResult emptyHeap##type##List(type##List** output) {                         \
-		*output = malloc(sizeof(type##List));                                        \
-		ASSERT_NONNULL(*output);                                                     \
-		**output = (type##List) {                                                    \
-			.size = 0,                                                               \
-			.capacity = 8,                                                           \
-			.data = malloc(sizeof(type) * 8),                                        \
-		};                                                                           \
-		ASSERT_NONNULL((*output)->data);                                             \
-		return OK;                                                                   \
-	}                                                                                \
-                                                                                     \
-	KleinResult appendTo##type##List(type##List* list, type value) {                 \
+	void appendTo##type##List(type##List* list, type value) {                        \
 		if (list->size == list->capacity) {                                          \
 			list->capacity *= 2;                                                     \
 			list->data = (type*) realloc(list->data, sizeof(type) * list->capacity); \
-			ASSERT_NONNULL(list->data);                                              \
 		}                                                                            \
                                                                                      \
 		list->data[list->size] = value;                                              \
 		list->size++;                                                                \
-                                                                                     \
-		return OK;                                                                   \
 	}                                                                                \
                                                                                      \
-	KleinResult prependTo##type##List(type##List* list, type value) {                \
+	void prependTo##type##List(type##List* list, type value) {                       \
 		if (list->size == list->capacity) {                                          \
 			list->capacity *= 2;                                                     \
 			list->data = realloc(list->data, sizeof(type) * list->capacity);         \
-			ASSERT_NONNULL(list->data);                                              \
 		}                                                                            \
                                                                                      \
 		for (unsigned long index = list->size; index > 0; index--) {                 \
@@ -56,22 +48,14 @@ typedef char Char;
                                                                                      \
 		list->data[0] = value;                                                       \
 		list->size++;                                                                \
-                                                                                     \
-		return OK;                                                                   \
 	}                                                                                \
                                                                                      \
-	KleinResult pop##type##List(type##List* list) {                                  \
-		if (list->size == 0) {                                                       \
-			return error("Attempted to pop from an empty list");                     \
-		}                                                                            \
-                                                                                     \
+	void pop##type##List(type##List* list) {                                         \
 		for (unsigned long index = 0; index < list->size - 1; index++) {             \
 			list->data[index] = list->data[index + 1];                               \
 		}                                                                            \
                                                                                      \
 		list->size--;                                                                \
-                                                                                     \
-		return OK;                                                                   \
 	}                                                                                \
                                                                                      \
 	int is##type##ListEmpty(type##List list) {                                       \
@@ -111,7 +95,7 @@ typedef char Char;
 
 #define END }
 
-DEFINE_KLEIN_LIST(Char)
-DEFINE_KLEIN_LIST(String)
+DEFINE_KLEIN_LIST(Char);
+DEFINE_KLEIN_LIST(String);
 
 #endif

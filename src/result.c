@@ -1,20 +1,13 @@
 #include "../include/result.h"
 #include <stdarg.h>
 #include <stdbool.h>
-#include <string.h>
 
-KleinResult OK = (KleinResult) {.errorMessage = NULL};
+KleinResult OK = (KleinResult) {.type = KLEIN_OK};
 
 bool isOk(KleinResult result) {
-	return result.errorMessage == NULL;
+	return result.type == KLEIN_OK;
 }
 
 bool isError(KleinResult result) {
-	return result.errorMessage != NULL;
-}
-
-KleinResult error(String message) {
-	return (KleinResult) {
-		.errorMessage = strdup(message),
-	};
+	return !isOk(result);
 }
