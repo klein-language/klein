@@ -280,7 +280,7 @@ PRIVATE KleinResult evaluateUnaryExpression(UnaryExpression unaryExpression, Val
 			if (isNumber(index) && isList(operand)) {
 				UNWRAP_LET(double* number, getNumber(index, &number));
 				UNWRAP_LET(ValueList * list, getList(operand, &list));
-				RETURN_OK(output, list->data[(int) *number - 1]);
+				RETURN_OK(output, list->data[(int) *number]);
 			}
 
 			RETURN_ERROR("Invalid index expression");
