@@ -209,6 +209,8 @@ PRIVATE KleinResult evaluateBinaryExpression(BinaryExpression binary, Value* out
 			return reassignVariable(CONTEXT->scope, (ScopeDeclaration) {.name = binary.left.data.identifier, .value = right});
 		}
 	}
+
+	UNREACHABLE;
 }
 
 PRIVATE KleinResult evaluateFunction(Function expression, Value* output) {
@@ -301,6 +303,7 @@ PRIVATE KleinResult evaluateUnaryExpression(UnaryExpression unaryExpression, Val
 			};
 		}
 	}
+	UNREACHABLE;
 }
 
 KleinResult evaluateExpression(Expression expression, Value* output) {
@@ -349,6 +352,8 @@ KleinResult evaluateExpression(Expression expression, Value* output) {
 			UNREACHABLE;
 		}
 	}
+
+	UNREACHABLE;
 }
 
 PRIVATE KleinResult evaluateStatement(Statement statement) {
@@ -376,6 +381,8 @@ PRIVATE KleinResult evaluateStatement(Statement statement) {
 			return OK;
 		}
 	}
+
+	UNREACHABLE;
 }
 
 KleinResult run(Program program) {

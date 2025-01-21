@@ -9,6 +9,6 @@ pub enum StaticError {
 /// # Returns
 ///
 /// The error that occurred while checking the code, if there was one.
-pub fn check(code: &str) -> Option<StaticError> {
-    None
+pub fn check(code: &str) -> Result<(), StaticError> {
+    Ok(())
 }

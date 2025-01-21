@@ -305,6 +305,8 @@ String tokenTypeName(TokenType type) {
 		case TOKEN_TYPE_EOF:
 			return "end of file";
 	}
+
+	return "invalid token";
 }
 
 IMPLEMENT_KLEIN_LIST(Token)

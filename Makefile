@@ -1,7 +1,7 @@
 # Customizeable
-CC = clang # The C compiler to use
-LOCATION = /usr/bin # Where to install
-EXE = klein # Name of the executable
+CC = clang
+LOCATION = /usr/bin
+EXE = klein
 
 # Probably don't change these
 CACHEDIR = ./.cache
@@ -19,7 +19,15 @@ OBJS = $(SRCS:src/%.c=$(OBJDIR)/%.o)
 
 #MAKEFLAGS += --silent
 
+# Clang flags
+ifeq ($(CC), clang)
 CFLAGS = -ferror-limit=0 -fdiagnostics-color=always -Wall -Wextra -Weverything -Wno-padded -Wno-extra-semi-stmt -Wno-switch-default -Wno-unsafe-buffer-usage -Wno-declaration-after-statement -Wno-switch-enum -Wno-implicit-int-float-conversion -Wno-unused-macros -Wno-c++98-compat-pedantic
+endif
+
+# gcc flags
+ifeq ($(CC), gcc)
+CFLAGS = -Wall -Wextra
+endif
 
 # Build when just running `make`
 all: build

@@ -49,6 +49,14 @@ Klein is designed to be embedded into other languages. In general, any language 
 
 To use Klein in a C project, copy the `klein.a` static library and the `klein.h` definitions in the [`bindings/c`](https://github.com/klein-language/klein/tree/main/bindings/c) directory into your project, and include `klein.a` when linking your object files. An example C project embedding klein can be found in [`tests/c`](https://github.com/klein-language/tree/main/tests/c).
 
+You can also build the libraries from source if you'd like:
+
+```bash
+git clone https://github.com/klein-language/klein.git && cd klein && make c-bindings
+```
+
+This will do a full clean compilation of the interpreter and place the header file, static library, and dynamic library in `bindings/c`.
+
 ### Rust
 
 Klein is available through the Rust crate [`cklein`](https://crates.io/crates/cklein). See [the rust bindings](https://github.com/klein-language/klein/tree/main/bindings/rust) for more information.

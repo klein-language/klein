@@ -8,9 +8,9 @@ pub fn run_static(input: TokenStream) -> TokenStream {
 
     // Validate parsing
     let string = syn::parse_macro_input!(input as syn::LitStr).value();
-    if let Some(error) = cklein_core::check(&string) {
-        panic!("Error in Klein code: {error}");
-    }
+    cklein_core::check(&string)
+        .map_err(|error| format!("Error in Klein code: {error}"))
+        .unwrap();
 
     // Return the run function
     quote::quote! {
