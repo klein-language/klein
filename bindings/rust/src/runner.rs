@@ -11,7 +11,7 @@ pub enum RuntimeError {
 pub fn run(code: &str) -> Result<(), RuntimeError> {
     unsafe {
         let c_code = CString::new(code).unwrap();
-        let result = crate::internal::runKlein(c_code.as_ptr());
+        let result = crate::internal::runKlein(c_code.into_raw());
         if !result.errorMessage.is_null() {
             Err(RuntimeError::UndefinedVariableReference("null".to_string()))
         } else {

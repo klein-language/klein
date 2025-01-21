@@ -1,7 +1,11 @@
 [package]
 name = "cklein"
 version = "0.1.0"
+description = "High-level safe bindings to the Klein scripting language."
+authors = ["Violet Iapalucci"]
+license = "LGPL-v3"
 edition = "2021"
+repository = "https://github.com/klein-language/klein/tree/main/bindings/rust"
 
 [build-dependencies]
 bindgen = "0.71.1"

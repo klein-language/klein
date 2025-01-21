@@ -23,17 +23,18 @@ pub enum TokenizationError {
 pub fn tokenize(code: &str) -> Result<Vec<Token>, TokenizationError> {
     unsafe {
         let ccode = CString::new(code).unwrap();
-        let mut tokens = crate::internal::KleinTokenList {
-            length: 0,
+        let mut tokens = crate::internal::TokenList {
+            size: 0,
+            capacity: 0,
             data: std::ptr::null_mut(),
         };
-        let result = crate::internal::tokenizeKlein(ccode.as_ptr(), &mut tokens);
+        let result = crate::internal::tokenizeKlein(ccode.into_raw(), &mut tokens);
         if !result.errorMessage.is_null() {
             return Err(TokenizationError::UnrecognizedToken);
         }
 
         let mut output = Vec::new();
-        for index in 0 .. tokens.length {
+        for index in 0 .. tokens.size {
             let internalToken = *tokens.data.add(index as usize);
             let value_str = CStr::from_ptr(internalToken.value);
             output.push(Token {
