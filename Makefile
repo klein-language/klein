@@ -19,15 +19,7 @@ OBJS = $(SRCS:src/%.c=$(OBJDIR)/%.o)
 
 #MAKEFLAGS += --silent
 
-# Clang flags
-ifeq ($(CC), clang)
-	CFLAGS = -ferror-limit=0 -fdiagnostics-color=always -Wall -Wextra -Weverything -Wno-padded -Wno-extra-semi-stmt -Wno-switch-default -Wno-unsafe-buffer-usage -Wno-declaration-after-statement -Wno-switch-enum -Wno-implicit-int-float-conversion -Wno-unused-macros -Wno-c++98-compat-pedantic
-endif
-
-# gcc flags
-ifeq ($(CC), gcc)
-	CFLAGS = -Wall -Wextra
-endif
+CFLAGS = -ferror-limit=0 -fdiagnostics-color=always -Wall -Wextra -Weverything -Wno-padded -Wno-extra-semi-stmt -Wno-switch-default -Wno-unsafe-buffer-usage -Wno-declaration-after-statement -Wno-switch-enum -Wno-implicit-int-float-conversion -Wno-unused-macros -Wno-c++98-compat-pedantic
 
 # Build when just running `make`
 all: build
@@ -71,8 +63,9 @@ install: build
 
 # Build static library
 c-bindings: $(OBJS)
+	cp ./include/klein.h ./bindings/c/klein.h
 	ar rcs ./bindings/c/klein.a $(OBJDIR)/*.o
-	$(CC) -shared -fPIC -o ./bindings/c/libklein.so $(SRCS)
+	$(CC) $(CFLAGS) -shared -fPIC -o ./bindings/c/libklein.so $(SRCS)
 
 rust-bindings: c-bindings
 	cp $(SHAREDLIB) bindings/rust/crates/cklein-core/lib

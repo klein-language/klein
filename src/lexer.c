@@ -1,5 +1,5 @@
 #include "../include/lexer.h"
-#include "../bindings/c/klein.h"
+#include "../include//klein.h"
 #include "../include/list.h"
 #include "../include/result.h"
 #include "../include/util.h"

@@ -1,7 +1,7 @@
 #ifndef LIST_H
 #define LIST_H
 
-#include "../bindings/c/klein.h"
+#include "./klein.h"
 #include "result.h"
 #include "util.h"
 

@@ -1,7 +1,7 @@
 #ifndef TYPECHECKER_H
 #define TYPECHECKER_H
 
-#include "../bindings/c/klein.h"
+#include "./klein.h"
 
 KleinResult typeOf(Expression expression, Type* output);
 

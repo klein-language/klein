@@ -1,7 +1,7 @@
 #ifndef RESULT_H
 #define RESULT_H
 
-#include "../bindings/c/klein.h"
+#include "./klein.h"
 #include "util.h"
 #include <stdbool.h>
 #include <stdio.h>
